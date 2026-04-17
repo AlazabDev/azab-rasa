@@ -62,7 +62,7 @@ from fastapi import (
     UploadFile,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from openai import AsyncOpenAI
 from pydantic import BaseModel, field_validator
@@ -92,7 +92,7 @@ STATIC_DIR = BASE_DIR / "static"
 UPLOADS_DIR = STATIC_DIR / "uploads"
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 
-PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "https://chat.alazab.com").rstrip("/")
+PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "https://bot.alazab.com").rstrip("/")
 MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_BYTES", str(12 * 1024 * 1024)))
 ALLOWED_FILE_EXTENSIONS = {
     ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
@@ -101,25 +101,57 @@ ALLOWED_FILE_EXTENSIONS = {
 AUDIO_FILE_EXTENSIONS = {".mp3", ".wav", ".ogg", ".m4a", ".webm", ".aac", ".mp4"}
 AUDIO_TRANSCRIPTION_MODEL = os.getenv("AUDIO_TRANSCRIPTION_MODEL", "gpt-4o-mini-transcribe")
 
+BRAND_PATH_MAP = {
+    "/": "alazab_construction",
+    "/luxury-finishing": "luxury_finishing",
+    "/brand-identity": "brand_identity",
+    "/uberfix": "uberfix",
+    "/laban-alasfour": "laban_alasfour",
+}
+
+BRAND_PROFILES = {
+    "alazab_construction": {
+        "slug": "",
+        "name": "Alazab Construction",
+        "title": "عزبوت",
+        "subtitle": "المساعد الذكي لمجموعة العزب",
+    },
+    "luxury_finishing": {
+        "slug": "luxury-finishing",
+        "name": "Luxury Finishing",
+        "title": "لاكشري بوت",
+        "subtitle": "مستشار التشطيبات الراقية",
+    },
+    "brand_identity": {
+        "slug": "brand-identity",
+        "name": "Brand Identity",
+        "title": "براند بوت",
+        "subtitle": "خبير الهوية البصرية وتجهيز العلامات",
+    },
+    "uberfix": {
+        "slug": "uberfix",
+        "name": "UberFix",
+        "title": "فيكس بوت",
+        "subtitle": "مستشار الصيانة والتشغيل",
+    },
+    "laban_alasfour": {
+        "slug": "laban-alasfour",
+        "name": "Laban Alasfour",
+        "title": "لبن بوت",
+        "subtitle": "مستشار التوريدات والخامات",
+    },
+}
+
 SITE_BRAND_MAP = {
-    "alazab.com": "alazab_construction",
-    "www.alazab.com": "alazab_construction",
-    "brand-identity.alazab.com": "brand_identity",
-    "laban-alasfour.alazab.com": "laban_alasfour",
-    "luxury-finishing.alazab.com": "luxury_finishing",
-    "uberfix.alazab.com": "uberfix",
+    "bot.alazab.com": "alazab_construction",
+    "www.bot.alazab.com": "alazab_construction",
 }
 
 ALLOWED_ORIGINS = os.getenv(
     "ALLOWED_ORIGINS",
     (
-        "https://alazab.com,"
-        "https://www.alazab.com,"
-        "https://brand-identity.alazab.com,"
-        "https://laban-alasfour.alazab.com,"
-        "https://luxury-finishing.alazab.com,"
-        "https://uberfix.alazab.com,"
-        "https://chat.alazab.com,"
+        "https://bot.alazab.com,"
+        "https://www.bot.alazab.com,"
         "http://localhost:3000"
     ),
 ).split(",")
@@ -177,6 +209,7 @@ class ChatRequest(BaseModel):
     brand:     Optional[str] = None
     channel:   Optional[str] = "website"
     site_host: Optional[str] = None
+    site_path: Optional[str] = None
 
     @field_validator("message")
     @classmethod
@@ -266,6 +299,20 @@ async def get_brands():
     }
 
 
+@app.get("/", response_class=HTMLResponse, tags=["Widget"])
+async def brand_home():
+    return _brand_page("alazab_construction")
+
+
+@app.get("/{brand_slug}", response_class=HTMLResponse, tags=["Widget"])
+@app.get("/{brand_slug}/", response_class=HTMLResponse, include_in_schema=False)
+async def brand_path(brand_slug: str):
+    brand = BRAND_PATH_MAP.get(f"/{brand_slug.strip('/')}")
+    if not brand:
+        raise HTTPException(status_code=404, detail="Not found")
+    return _brand_page(brand)
+
+
 # ══════════════════════════════════════════════════════════════
 #  CHAT — موقع / تطبيق
 # ══════════════════════════════════════════════════════════════
@@ -274,14 +321,15 @@ async def chat(request: Request, payload: ChatRequest):
     """الواجهة الرئيسية للموقع والتطبيق — مزامنة."""
     channel = payload.channel or "website"
     site_host = payload.site_host or _extract_request_site_host(request)
-    brand = _resolve_brand(payload.brand, site_host, request)
+    site_path = payload.site_path or _extract_request_site_path(request)
+    brand = _resolve_brand(payload.brand, site_host, site_path, request)
 
     _count(channel)
     responses = await _rasa_send(
         payload.sender_id,
         payload.message,
         brand,
-        extra_metadata={"channel": channel, "site_host": site_host},
+        extra_metadata={"channel": channel, "site_host": site_host, "site_path": site_path},
     )
     if not responses:
         responses = [{
@@ -308,13 +356,15 @@ async def chat_upload(
     brand: Optional[str] = Form(default=None),
     channel: str = Form(default="website"),
     site_host: Optional[str] = Form(default=None),
+    site_path: Optional[str] = Form(default=None),
 ):
     """استقبال ملفات من واجهة الموقع وتمرير وصفها للبوت."""
     if not sender_id.strip():
         raise HTTPException(status_code=422, detail="sender_id مطلوب")
 
     resolved_site_host = site_host or _extract_request_site_host(request)
-    resolved_brand = _resolve_brand(brand, resolved_site_host, request)
+    resolved_site_path = site_path or _extract_request_site_path(request)
+    resolved_brand = _resolve_brand(brand, resolved_site_host, resolved_site_path, request)
     attachment = await _save_upload(file, ALLOWED_FILE_EXTENSIONS, kind="file")
 
     _count(channel)
@@ -327,6 +377,7 @@ async def chat_upload(
         extra_metadata={
             "channel": channel,
             "site_host": resolved_site_host,
+            "site_path": resolved_site_path,
             "attachment": public_attachment,
         },
     )
@@ -355,13 +406,15 @@ async def chat_audio(
     brand: Optional[str] = Form(default=None),
     channel: str = Form(default="website"),
     site_host: Optional[str] = Form(default=None),
+    site_path: Optional[str] = Form(default=None),
 ):
     """استقبال ملاحظات صوتية من الواجهة مع نسخها نصيًا إن أمكن."""
     if not sender_id.strip():
         raise HTTPException(status_code=422, detail="sender_id مطلوب")
 
     resolved_site_host = site_host or _extract_request_site_host(request)
-    resolved_brand = _resolve_brand(brand, resolved_site_host, request)
+    resolved_site_path = site_path or _extract_request_site_path(request)
+    resolved_brand = _resolve_brand(brand, resolved_site_host, resolved_site_path, request)
     attachment = await _save_upload(file, AUDIO_FILE_EXTENSIONS, kind="audio")
     transcript = await _transcribe_audio(attachment["path"])
     public_attachment = _serialize_attachment(attachment)
@@ -375,6 +428,7 @@ async def chat_audio(
             extra_metadata={
                 "channel": channel,
                 "site_host": resolved_site_host,
+                "site_path": resolved_site_path,
                 "audio_attachment": public_attachment,
                 "audio_transcript": transcript,
             },
@@ -471,7 +525,7 @@ async def telegram_messages(request: Request, background_tasks: BackgroundTasks)
     رسائل Telegram الواردة.
     يُسجَّل عبر:
       POST https://api.telegram.org/bot{TOKEN}/setWebhook
-        ?url=https://chat.alazab.com/webhook/telegram
+        ?url=https://bot.alazab.com/webhook/telegram
     """
     data    = await request.json()
     message = data.get("message") or data.get("edited_message")
@@ -718,18 +772,48 @@ def _extract_hostname(value: Optional[str]) -> Optional[str]:
 def _extract_request_site_host(request: Request) -> Optional[str]:
     for header_name in ("origin", "referer", "x-forwarded-host", "host"):
         hostname = _extract_hostname(request.headers.get(header_name))
-        if hostname and hostname != "chat.alazab.com":
+        if hostname and hostname != "bot.alazab.com":
             return hostname
     return _extract_hostname(request.headers.get("host"))
+
+
+def _extract_path(value: Optional[str]) -> Optional[str]:
+    if not value:
+        return None
+    first_value = value.split(",")[0].strip()
+    if not first_value:
+        return None
+    parsed = urlparse(first_value if "://" in first_value else f"https://bot.alazab.com{first_value}")
+    path = parsed.path or "/"
+    return "/" + path.strip("/") if path != "/" else "/"
+
+
+def _extract_request_site_path(request: Request) -> Optional[str]:
+    for header_name in ("x-original-uri", "x-forwarded-uri", "referer"):
+        path = _extract_path(request.headers.get(header_name))
+        if path and path not in {"/chat", "/chat/upload", "/chat/audio"}:
+            return path
+    return None
 
 
 def _resolve_brand(
     explicit_brand: Optional[str],
     site_host: Optional[str],
+    site_path: Optional[str],
     request: Request,
 ) -> str:
-    if explicit_brand:
+    if explicit_brand in BRAND_PROFILES:
         return explicit_brand
+
+    for candidate_path in (
+        site_path,
+        _extract_request_site_path(request),
+        _extract_path(request.headers.get("referer")),
+    ):
+        if candidate_path:
+            brand = BRAND_PATH_MAP.get(candidate_path.rstrip("/") or "/")
+            if brand:
+                return brand
 
     for candidate in (
         site_host,
@@ -741,6 +825,58 @@ def _resolve_brand(
             return SITE_BRAND_MAP[candidate]
 
     return os.getenv("DEFAULT_BRAND", "alazab_construction")
+
+
+def _brand_page(brand: str) -> HTMLResponse:
+    profile = BRAND_PROFILES[brand]
+    slug = profile["slug"]
+    canonical_path = f"/{slug}" if slug else "/"
+    title = profile["title"]
+    subtitle = profile["subtitle"]
+    name = profile["name"]
+    html = f"""<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{title} | Alazab Bot</title>
+  <link rel="canonical" href="{PUBLIC_BASE_URL}{canonical_path}">
+  <style>
+    body {{
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: #f6f7fb;
+      color: #12203a;
+      font-family: Cairo, system-ui, sans-serif;
+    }}
+    main {{
+      width: min(720px, calc(100vw - 32px));
+      text-align: center;
+      padding: 48px 16px;
+    }}
+    h1 {{ margin: 0 0 12px; font-size: clamp(32px, 5vw, 56px); }}
+    p {{ margin: 0; color: #667085; font-size: 18px; line-height: 1.8; }}
+  </style>
+</head>
+<body>
+  <main>
+    <h1>{title}</h1>
+    <p>{subtitle} - {name}</p>
+  </main>
+  <script>
+    window.AzaBotConfig = {{
+      apiOrigin: location.origin,
+      brand: "{brand}",
+      siteHost: "bot.alazab.com",
+      sitePath: "{canonical_path}"
+    }};
+  </script>
+  <script src="/widget/widget.js" defer></script>
+</body>
+</html>"""
+    return HTMLResponse(html)
 
 
 async def _save_upload(

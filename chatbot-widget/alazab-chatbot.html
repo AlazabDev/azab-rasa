@@ -589,12 +589,12 @@
 <span class="c-keyword">&lt;script&gt;</span>
   <span class="c-attr">window</span>.<span class="c-attr">AlazabChatConfig</span> = {
     <span class="c-attr">brand</span>:    <span class="c-string" id="embedBrand">'alazab_construction'</span>,
-    <span class="c-attr">apiUrl</span>:   <span class="c-string">'https://api.alazab.com'</span>,
+    <span class="c-attr">apiUrl</span>:   <span class="c-string">'https://bot.alazab.com'</span>,
     <span class="c-attr">position</span>: <span class="c-string">'bottom-left'</span>,
     <span class="c-attr">lang</span>:     <span class="c-string">'ar'</span>,
   };
 <span class="c-keyword">&lt;/script&gt;</span>
-<span class="c-keyword">&lt;script</span> <span class="c-attr">src</span>=<span class="c-string">"https://cdn.alazab.com/chatbot/widget.js"</span>
+<span class="c-keyword">&lt;script</span> <span class="c-attr">src</span>=<span class="c-string">"https://bot.alazab.com/widget/widget.js"</span>
         <span class="c-attr">defer</span><span class="c-keyword">&gt;&lt;/script&gt;</span></pre>
 </div>
 
@@ -853,12 +853,12 @@ function copyCode() {
 <script>
   window.AlazabChatConfig = {
     brand:    '${currentBrand}',
-    apiUrl:   'https://api.alazab.com',
+    apiUrl:   'https://bot.alazab.com',
     position: 'bottom-left',
     lang:     'ar',
   };
 <\/script>
-<script src="https://cdn.alazab.com/chatbot/widget.js" defer><\/script>`;
+<script src="https://bot.alazab.com/widget/widget.js" defer><\/script>`;
   navigator.clipboard.writeText(code).then(() => {
     const btn = document.querySelector('.copy-btn');
     btn.textContent = '✅ تم النسخ!';

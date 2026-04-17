@@ -90,7 +90,7 @@ Invoke-RestMethod `
   -Uri http://127.0.0.1:8000/chat `
   -Method Post `
   -ContentType "application/json" `
-  -Body '{"sender_id":"test_nodocker","message":"مرحبا","channel":"website","site_host":"alazab.com"}' |
+  -Body '{"sender_id":"test_nodocker","message":"مرحبا","channel":"website","site_host":"bot.alazab.com","site_path":"/"}' |
   ConvertTo-Json -Depth 6
 ```
 

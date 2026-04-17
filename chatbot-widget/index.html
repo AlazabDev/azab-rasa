@@ -616,7 +616,7 @@ body {
 /* ══════════════════════════════════════════════════════
    CONFIG & STATE
 ══════════════════════════════════════════════════════ */
-const API_URL = window.RASA_URL || 'http://localhost:5005';
+const API_URL = window.CHAT_API_URL || `${location.origin}/chat`;
 
 const BRANDS = {
   alazab_construction: {
@@ -842,13 +842,16 @@ async function azSend(text) {
   document.getElementById('az-send-btn').disabled = true;
 
   try {
-    const res = await fetch(`${API_URL}/webhooks/rest/webhook`, {
+    const res = await fetch(API_URL, {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
-        sender: senderId,
+        sender_id: senderId,
         message: text,
-        metadata: { brand: currentBrand }
+        brand: currentBrand,
+        channel: 'website',
+        site_host: location.hostname,
+        site_path: location.pathname
       })
     });
 
@@ -856,7 +859,8 @@ async function azSend(text) {
 
     if (!res.ok) throw new Error('HTTP ' + res.status);
 
-    const data = await res.json();
+    const payload = await res.json();
+    const data = Array.isArray(payload.responses) ? payload.responses : [];
 
     if (!data || !data.length) {
       msgs.appendChild(makeBubble('bot', 'عذراً، لم أفهم طلبك. هل يمكنك إعادة الصياغة؟'));

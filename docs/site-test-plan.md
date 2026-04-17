@@ -2,11 +2,11 @@
 
 هذا الدليل مخصص لاختبار البوت على المواقع الخمسة التالية:
 
-1. `alazab.com`
-2. `brand-identity.alazab.com`
-3. `laban-alasfour.alazab.com`
-4. `luxury-finishing.alazab.com`
-5. `uberfix.alazab.com`
+1. `bot.alazab.com`
+2. `bot.alazab.com/brand-identity`
+3. `bot.alazab.com/laban-alasfour`
+4. `bot.alazab.com/luxury-finishing`
+5. `bot.alazab.com/uberfix`
 
 ## Before You Start
 
@@ -28,7 +28,7 @@
 
 ## Site-Specific Expectations
 
-### `alazab.com`
+### `bot.alazab.com`
 
 1. افتح البوت.
 2. تأكد أن الرسائل السريعة عامة للشركة.
@@ -39,7 +39,7 @@
 7. سجّل رسالة صوتية قصيرة.
 8. المتوقع: تفريغ النص أو تأكيد استلام الصوت.
 
-### `brand-identity.alazab.com`
+### `bot.alazab.com/brand-identity`
 
 1. افتح البوت.
 2. تأكد أن الرسائل السريعة مرتبطة بالهوية البصرية.
@@ -50,7 +50,7 @@
 7. سجّل رسالة صوتية عن تجهيز الفرع.
 8. المتوقع: تفريغ النص أو تأكيد الاستلام.
 
-### `laban-alasfour.alazab.com`
+### `bot.alazab.com/laban-alasfour`
 
 1. افتح البوت.
 2. تأكد أن الرسائل السريعة مرتبطة بالخامات والتوريدات.
@@ -61,7 +61,7 @@
 7. سجّل رسالة صوتية عن طلب توريد.
 8. المتوقع: تفريغ النص أو تأكيد الاستلام.
 
-### `luxury-finishing.alazab.com`
+### `bot.alazab.com/luxury-finishing`
 
 1. افتح البوت.
 2. تأكد أن الرسائل السريعة مرتبطة بالتشطيبات.
@@ -72,7 +72,7 @@
 7. سجّل رسالة صوتية عن المساحة ونوع التشطيب.
 8. المتوقع: تفريغ النص أو تأكيد الاستلام.
 
-### `uberfix.alazab.com`
+### `bot.alazab.com/uberfix`
 
 1. افتح البوت.
 2. تأكد أن الرسائل السريعة مرتبطة بالصيانة.

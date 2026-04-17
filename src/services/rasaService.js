@@ -3,11 +3,11 @@ class RasaService {
     this.rasaUrl =
       process.env.REACT_APP_RASA_URL ||
       process.env.VITE_RASA_URL ||
-      'http://localhost:5005';
+      '';
     this.chatApiUrl =
       process.env.REACT_APP_CHAT_API_URL ||
       process.env.VITE_CHAT_API_URL ||
-      '';
+      'https://bot.alazab.com/chat';
     this.defaultBrand =
       process.env.REACT_APP_DEFAULT_BRAND ||
       process.env.VITE_DEFAULT_BRAND ||

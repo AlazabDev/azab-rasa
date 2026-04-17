@@ -5,33 +5,36 @@
   const scriptUrl = document.currentScript?.src ? new URL(document.currentScript.src) : null;
   const apiOrigin = String(cfg.apiOrigin || cfg.apiUrl || scriptUrl?.origin || location.origin).replace(/\/$/, '');
   const host = String(cfg.siteHost || location.hostname || '').toLowerCase();
+  const path = String(cfg.sitePath || location.pathname || '/').replace(/\/$/, '') || '/';
   const position = cfg.position === 'bottom-left' ? 'left' : 'right';
 
+  const routes = {
+    '/': { brand: 'alazab_construction', subtitle: 'المساعد الذكي - متصل الآن', replies: ['ما هي خدمات الشركة؟', 'أريد عرض سعر تشطيب', 'ما هي فروع الشركة؟', 'كيف أتواصل معكم؟'] },
+    '/brand-identity': { brand: 'brand_identity', subtitle: 'مستشار الهوية الذكية - متصل الآن', replies: ['أريد عرض سعر تشطيب', 'ما هي خدمات الشركة؟', 'ما هي أسعار التشطيب؟', 'ما هي فروع الشركة؟'] },
+    '/laban-alasfour': { brand: 'laban_alasfour', subtitle: 'مستشار التوريدات - متصل الآن', replies: ['أريد كتالوج المنتجات', 'هل يوجد توريد جملة؟', 'ما هي مناطق التغطية؟', 'كيف أطلب عرض سعر؟'] },
+    '/luxury-finishing': { brand: 'luxury_finishing', subtitle: 'مستشار التشطيبات - متصل الآن', replies: ['ما هي أسعار التشطيب؟', 'أريد عرض سعر تشطيب', 'ما هي الخدمات المتاحة؟', 'هل توجد معاينة؟'] },
+    '/uberfix': { brand: 'uberfix', subtitle: 'مستشار الصيانة - متصل الآن', replies: ['أريد طلب صيانة', 'هل توجد خدمة طوارئ؟', 'ما هي مناطق العمل؟', 'كيف أتابع طلبي؟'] },
+  };
   const sites = {
-    'alazab.com': { brand: 'alazab_construction', subtitle: 'المساعد الذكي - متصل الآن', replies: ['ما هي خدمات الشركة؟', 'أريد عرض سعر تشطيب', 'ما هي فروع الشركة؟', 'كيف أتواصل معكم؟'] },
-    'www.alazab.com': { brand: 'alazab_construction', subtitle: 'المساعد الذكي - متصل الآن', replies: ['ما هي خدمات الشركة؟', 'أريد عرض سعر تشطيب', 'ما هي فروع الشركة؟', 'كيف أتواصل معكم؟'] },
-    'brand-identity.alazab.com': { brand: 'brand_identity', subtitle: 'مستشار الهوية الذكية - متصل الآن', replies: ['أريد عرض سعر تشطيب', 'ما هي خدمات الشركة؟', 'ما هي أسعار التشطيب؟', 'ما هي فروع الشركة؟'] },
-    'laban-alasfour.alazab.com': { brand: 'laban_alasfour', subtitle: 'مستشار التوريدات - متصل الآن', replies: ['أريد كتالوج المنتجات', 'هل يوجد توريد جملة؟', 'ما هي مناطق التغطية؟', 'كيف أطلب عرض سعر؟'] },
-    'luxury-finishing.alazab.com': { brand: 'luxury_finishing', subtitle: 'مستشار التشطيبات - متصل الآن', replies: ['ما هي أسعار التشطيب؟', 'أريد عرض سعر تشطيب', 'ما هي الخدمات المتاحة؟', 'هل توجد معاينة؟'] },
-    'uberfix.alazab.com': { brand: 'uberfix', subtitle: 'مستشار الصيانة - متصل الآن', replies: ['أريد طلب صيانة', 'هل توجد خدمة طوارئ؟', 'ما هي مناطق العمل؟', 'كيف أتابع طلبي؟'] },
+    'bot.alazab.com': routes['/'],
+    'www.bot.alazab.com': routes['/'],
   };
   const site = Object.assign({
     brand: 'alazab_construction',
     subtitle: 'المساعد الذكي - متصل الآن',
     replies: ['ما هي خدمات الشركة؟', 'أريد عرض سعر', 'ما هي فروع الشركة؟', 'كيف أتواصل معكم؟'],
-  }, sites[host] || {}, cfg.profile || {});
+  }, routes[path] || sites[host] || {}, cfg.profile || {});
   if (cfg.brand) site.brand = cfg.brand;
 
   const navItems = cfg.navItems || [
     { label: 'الرئيسية', href: `${location.origin}/` },
-    { label: 'خدماتنا', href: `${location.origin}/services` },
-    { label: 'مشاريعنا', href: `${location.origin}/projects` },
-    { label: 'طلب عرض سعر', href: `${location.origin}/quote` },
-    { label: 'من نحن', href: `${location.origin}/about` },
-    { label: 'تواصل معنا', href: `${location.origin}/contact` },
+    { label: 'Luxury Finishing', href: `${location.origin}/luxury-finishing` },
+    { label: 'Brand Identity', href: `${location.origin}/brand-identity` },
+    { label: 'UberFix', href: `${location.origin}/uberfix` },
+    { label: 'Laban Alasfour', href: `${location.origin}/laban-alasfour` },
   ];
 
-  const storageKey = cfg.storageKey || `azabot_history_${host || 'default'}_${site.brand}`;
+  const storageKey = cfg.storageKey || `azabot_history_${host || 'default'}_${path}_${site.brand}`;
   const senderKey = cfg.senderKey || `azabot_sender_${host || 'default'}`;
   const state = {
     open: false,
@@ -282,7 +285,7 @@
       const response = await fetch(`${apiOrigin}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sender_id: state.senderId, message: value, brand: site.brand, channel: 'website', site_host: host }),
+        body: JSON.stringify({ sender_id: state.senderId, message: value, brand: site.brand, channel: 'website', site_host: host, site_path: path }),
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.detail || 'chat failed');
@@ -307,6 +310,7 @@
       form.append('brand', site.brand);
       form.append('channel', 'website');
       form.append('site_host', host);
+      form.append('site_path', path);
       form.append('file', file);
       const response = await fetch(`${apiOrigin}/chat/upload`, { method: 'POST', body: form });
       const payload = await response.json();
@@ -377,6 +381,7 @@
       form.append('brand', site.brand);
       form.append('channel', 'website');
       form.append('site_host', host);
+      form.append('site_path', path);
       form.append('file', blob, filename);
       const response = await fetch(`${apiOrigin}/chat/audio`, { method: 'POST', body: form });
       const payload = await response.json();

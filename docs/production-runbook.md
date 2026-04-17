@@ -30,13 +30,15 @@ Place real certificate files here:
 
 The certificate must cover:
 
-- `chat.alazab.com`
-- `alazab.com`
-- `www.alazab.com`
-- `brand-identity.alazab.com`
-- `laban-alasfour.alazab.com`
-- `luxury-finishing.alazab.com`
-- `uberfix.alazab.com`
+- `bot.alazab.com`
+- `www.bot.alazab.com`
+
+The public brand paths are:
+
+- `bot.alazab.com/brand-identity`
+- `bot.alazab.com/laban-alasfour`
+- `bot.alazab.com/luxury-finishing`
+- `bot.alazab.com/uberfix`
 
 ## 3. Run Preflight
 
@@ -56,7 +58,7 @@ docker compose --env-file .env.production -f docker-compose.prod.yaml up -d --bu
 
 ```powershell
 docker compose --env-file .env.production -f docker-compose.prod.yaml ps
-Invoke-WebRequest https://chat.alazab.com/health -UseBasicParsing
+Invoke-WebRequest https://bot.alazab.com/health -UseBasicParsing
 ```
 
 ## 6. Test Sites
@@ -82,7 +84,7 @@ bash scripts/register-telegram.sh
 The expected webhook path is:
 
 ```text
-https://chat.alazab.com/webhook/telegram
+https://bot.alazab.com/webhook/telegram
 ```
 
 ## 8. Logs

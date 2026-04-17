@@ -34,14 +34,14 @@
     <h1>معاينة AzBot</h1>
     <p>هذه الصفحة لعرض الودجت بالشكل النهائي. افتح الزر العائم أسفل الصفحة أو استدعه برمجياً.</p>
   </div>
-  <script src="./alazab-chat-widget.js"></script>
   <script>
-    window.AlazabChatWidget.init({
-      apiUrl: `${location.origin}/chat`,
+    window.AzaBotConfig = {
+      apiOrigin: location.origin,
       brand: 'uberfix',
-      headerTitle: 'عزبوت (AzBot)',
-      headerSubtitle: 'المساعد الذكي — متصل الآن'
-    });
+      siteHost: 'bot.alazab.com',
+      sitePath: '/uberfix'
+    };
   </script>
+  <script src="./alazab-chat-widget.js" defer></script>
 </body>
 </html>

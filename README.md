@@ -152,12 +152,12 @@ make deploy         # نشر إنتاجي كامل
 <script>
   window.AlazabChatConfig = {
     brand:    'alazab_construction',  // اسم البراند
-    apiUrl:   'https://api.alazab.com',
+    apiUrl:   'https://bot.alazab.com',
     position: 'bottom-left',          // أو 'bottom-right'
     lang:     'ar',
   };
 </script>
-<script src="https://cdn.alazab.com/chatbot/widget.js" defer></script>
+<script src="https://bot.alazab.com/widget/widget.js" defer></script>
 ```
 
 ### أسماء البراندات المتاحة:
@@ -182,7 +182,7 @@ make deploy         # نشر إنتاجي كامل
 
 ```bash
 # مثال — إرسال رسالة
-curl -X POST https://api.alazab.com/chat \
+curl -X POST https://bot.alazab.com/chat \
   -H "Content-Type: application/json" \
   -d '{"message":"ما هي خدمات UberFix؟","sender_id":"user_123","brand":"uberfix"}'
 ```

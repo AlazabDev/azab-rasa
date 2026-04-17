@@ -82,13 +82,8 @@ if (Test-Path $EnvFile) {
 
     $origins = @($envMap["ALLOWED_ORIGINS"] -split ",")
     $expectedOrigins = @(
-        "https://alazab.com",
-        "https://www.alazab.com",
-        "https://brand-identity.alazab.com",
-        "https://laban-alasfour.alazab.com",
-        "https://luxury-finishing.alazab.com",
-        "https://uberfix.alazab.com",
-        "https://chat.alazab.com"
+        "https://bot.alazab.com",
+        "https://www.bot.alazab.com"
     )
     foreach ($origin in $expectedOrigins) {
         if ($origins -contains $origin) { Pass "CORS includes $origin" } else { Fail "CORS missing $origin" }
