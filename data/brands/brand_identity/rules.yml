@@ -1,0 +1,27 @@
+version: "3.1"
+
+rules:
+  - rule: خدمات Luxury Finishing
+    steps:
+      - intent: ask_luxury_services
+      - action: utter_luxury_services
+
+  - rule: خامات Luxury Finishing
+    steps:
+      - intent: ask_luxury_materials
+      - action: utter_luxury_materials
+
+  - rule: بورتفوليو Luxury Finishing
+    steps:
+      - intent: ask_luxury_portfolio
+      - action: utter_luxury_portfolio
+
+  - rule: عرض سعر Luxury Finishing
+    steps:
+      - intent: ask_luxury_quote
+      - action: utter_luxury_quote
+
+  - rule: مدة تشطيب Luxury Finishing
+    steps:
+      - intent: ask_luxury_timeline
+      - action: utter_luxury_timeline

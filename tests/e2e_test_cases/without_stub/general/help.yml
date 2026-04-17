@@ -1,0 +1,16 @@
+test_cases:
+  - test_case: سؤال عن الخدمات المتاحة
+    steps:
+      - user: "ايه اللي تقدر تعمله"
+        assertions:
+          - flow_started: "help"
+          - bot_uttered:
+              utter_name: "utter_what_can_you_do"
+
+  - test_case: طلب المساعدة
+    steps:
+      - user: "محتاج مساعدة"
+        assertions:
+          - flow_started: "help"
+          - bot_uttered:
+              utter_name: "utter_what_can_you_do"

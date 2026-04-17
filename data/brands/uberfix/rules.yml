@@ -1,0 +1,27 @@
+version: "3.1"
+
+rules:
+  - rule: خدمات Brand Identity
+    steps:
+      - intent: ask_brand_services
+      - action: utter_brand_services
+
+  - rule: عملية Brand Identity
+    steps:
+      - intent: ask_brand_process
+      - action: utter_brand_process
+
+  - rule: بورتفوليو Brand Identity
+    steps:
+      - intent: ask_brand_portfolio
+      - action: utter_brand_portfolio
+
+  - rule: عرض سعر Brand Identity
+    steps:
+      - intent: ask_brand_quote
+      - action: utter_brand_quote
+
+  - rule: قطاعات Brand Identity
+    steps:
+      - intent: ask_brand_industries
+      - action: utter_brand_industries

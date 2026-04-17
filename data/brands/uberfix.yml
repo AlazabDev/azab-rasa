@@ -1,0 +1,31 @@
+flows:
+  uberfix_services:
+    description: يعرض خدمات UberFix في الصيانة الذكية (كهرباء، سباكة، تكييف، صيانة دورية)
+    name: uberfix services
+    steps:
+      - action: utter_uberfix_services
+
+  uberfix_request:
+    description: يسجل طلب صيانة جديد عبر منصة UberFix
+    name: uberfix request maintenance
+    steps:
+      - action: action_uberfix_create_request
+      - link: collect_lead
+
+  uberfix_track:
+    description: يتتبع حالة طلب صيانة قائم في UberFix باستخدام رقم الطلب
+    name: uberfix track request
+    steps:
+      - action: action_uberfix_track_request
+
+  uberfix_subscriptions:
+    description: يعرض باقات الاشتراك السنوية في خدمة الصيانة الدورية من UberFix
+    name: uberfix subscriptions
+    steps:
+      - action: action_uberfix_show_subscriptions
+
+  uberfix_emergency:
+    description: حالة طوارئ صيانة عاجلة — يوجّه المستخدم للتواصل الفوري مع UberFix
+    name: uberfix emergency
+    steps:
+      - action: utter_uberfix_emergency

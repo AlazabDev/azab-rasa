@@ -1,0 +1,22 @@
+test_cases:
+  - test_case: عرض خدمات Alazab Construction
+    steps:
+      - user: "ما هي خدمات Alazab Construction؟"
+        assertions:
+          - flow_started: "alazab_services"
+          - bot_uttered:
+              utter_name: "utter_alazab_services"
+
+  - test_case: طلب عرض سعر لمشروع بناء
+    steps:
+      - user: "أريد عرض سعر لبناء عمارة"
+        assertions:
+          - flow_started: "alazab_get_quote"
+          - action_executed: action_alazab_get_quote
+
+  - test_case: عرض مشاريع Alazab
+    steps:
+      - user: "ما هي أبرز مشاريع Alazab؟"
+        assertions:
+          - flow_started: "alazab_projects"
+          - action_executed: action_alazab_show_projects

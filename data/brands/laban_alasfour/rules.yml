@@ -1,0 +1,27 @@
+version: "3.1"
+
+rules:
+  - rule: منتجات Laban Alasfour
+    steps:
+      - intent: ask_laban_products
+      - action: utter_laban_products
+
+  - rule: توصيل Laban Alasfour
+    steps:
+      - intent: ask_laban_delivery
+      - action: utter_laban_delivery
+
+  - rule: طلب جملة Laban Alasfour
+    steps:
+      - intent: ask_laban_bulk_order
+      - action: utter_laban_bulk_order
+
+  - rule: كتالوج Laban Alasfour
+    steps:
+      - intent: ask_laban_catalog
+      - action: utter_laban_catalog
+
+  - rule: تواصل Laban Alasfour
+    steps:
+      - intent: ask_laban_contact
+      - action: utter_laban_contact

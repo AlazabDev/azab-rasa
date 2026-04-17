@@ -1,0 +1,36 @@
+flows:
+  cannot_handle:
+    description: يتعامل مع الحالات التي لا يجد فيها المساعد إجابة ذات صلة بالسؤال
+    if: false
+    steps:
+      - action: utter_no_relevant_answer_found
+
+  pattern_completed:
+    description: تدفق اكتمل وليس هناك شيء آخر يجب فعله
+    if: false
+    steps:
+      - noop: true
+        next: END
+
+  pattern_correction:
+    description: معالجة تصحيح قيمة slot أدخلها المستخدم مسبقًا
+    name: pattern correction
+    steps:
+      - action: action_correct_flow_slot
+        next: END
+
+  pattern_search:
+    name: pattern_search
+    description: تدفق معالجة الأسئلة المعرفية والبحث في قاعدة المعرفة
+    steps:
+      - id: trigger_search
+        action: action_trigger_search
+        next: END
+
+  pattern_session_start:
+    description: تدفق بدء جلسة محادثة جديدة وإرسال رسالة الترحيب
+    name: pattern session start
+    nlu_trigger:
+      - intent: session_start
+    steps:
+      - action: utter_welcome

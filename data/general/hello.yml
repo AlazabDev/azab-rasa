@@ -1,0 +1,6 @@
+flows:
+  hello:
+    description: تدفق الترحيب بالمستخدم عند بدء المحادثة
+    name: hello
+    steps:
+      - action: utter_hello

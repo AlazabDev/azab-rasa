@@ -1,0 +1,32 @@
+# ============================================================
+#  config.yml — إعدادات نموذج Rasa Pro (CALM)
+#  مجموعة العزب | Alazab Group
+#  Architecture: CALM + SearchReadyLLMCommandGenerator
+# ============================================================
+
+recipe: default.v1
+language: ar
+assistant_id: alazab-group-bot
+
+pipeline:
+  # ── LLM Command Generator (CALM Core) ──────────────────
+  - name: SearchReadyLLMCommandGenerator
+    llm:
+      model_group: openai-gpt-4o
+    flow_retrieval:
+      active: true                 # تفعيل استرجاع الـ flows الذكي
+
+policies:
+  # ── Flow Policy (منطق المحادثة المُعرَّف بالـ flows) ───
+  - name: FlowPolicy
+
+  # ── Enterprise Search Policy (قاعدة المعرفة) ───────────
+  - name: EnterpriseSearchPolicy
+    vector_store:
+      type: faiss
+      source: ./docs             # مستندات المعرفة لكل العلامات
+    llm:
+      model_group: openai-gpt-4o-mini
+    embeddings:
+      model_group: openai-embeddings
+    check_relevancy: true        # تحقق من صلة النتيجة قبل الإجابة

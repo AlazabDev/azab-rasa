@@ -1,0 +1,27 @@
+version: "3.1"
+
+rules:
+  - rule: سؤال عن خدمات Alazab Construction
+    steps:
+      - intent: ask_alazab_services
+      - action: utter_alazab_services
+
+  - rule: سؤال عن مشاريع Alazab
+    steps:
+      - intent: ask_alazab_projects
+      - action: utter_alazab_projects
+
+  - rule: سؤال عن التواصل مع Alazab
+    steps:
+      - intent: ask_alazab_contact
+      - action: utter_alazab_contact
+
+  - rule: طلب عرض سعر من Alazab
+    steps:
+      - intent: ask_alazab_quote
+      - action: utter_alazab_quote
+
+  - rule: سؤال عن Alazab Construction
+    steps:
+      - intent: ask_alazab_about
+      - action: utter_alazab_about

@@ -1,0 +1,5 @@
+version: "3.1"
+actions:
+  - action_uberfix_create_request
+  - action_uberfix_track_request
+  - action_uberfix_show_subscriptions

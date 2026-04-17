@@ -1,0 +1,30 @@
+version: "3.1"
+
+stories:
+  - story: طلب صيانة UberFix
+    steps:
+      - intent: greet
+      - action: utter_greet
+      - intent: ask_uberfix_services
+      - action: utter_uberfix_services
+      - intent: ask_uberfix_request
+      - action: utter_uberfix_request
+      - action: collect_lead_form
+      - active_loop: collect_lead_form
+      - action: collect_lead_form
+      - active_loop: null
+      - action: action_submit_lead
+
+  - story: استفسار عن اشتراك UberFix
+    steps:
+      - intent: ask_uberfix_subscription
+      - action: utter_uberfix_subscription
+      - intent: ask_uberfix_request
+      - action: utter_uberfix_request
+
+  - story: حالة طوارئ UberFix
+    steps:
+      - intent: ask_uberfix_emergency
+      - action: utter_uberfix_emergency
+      - intent: thanks
+      - action: utter_thanks

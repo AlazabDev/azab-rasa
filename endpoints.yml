@@ -1,0 +1,64 @@
+# ============================================================
+#  endpoints.yml — Alazab Group Chatbot Production
+#  Server: 158.101.231.62 | chat.alazab.com
+# ============================================================
+
+action_endpoint:
+  url: ${ACTION_SERVER_URL}
+
+nlg:
+  type: rephrase
+  llm:
+    model_group: openai-gpt-4o
+  prompt_template: prompts/rephraser_arabic_personality.jinja2
+  rephrase_all: false
+  summarize_history: false
+
+model_groups:
+  - id: openai-gpt-4o
+    models:
+      - provider: openai
+        model: gpt-4o
+        timeout: 15
+
+  - id: openai-gpt-4o-mini
+    models:
+      - provider: openai
+        model: gpt-4o-mini
+        timeout: 15
+
+  - id: openai-embeddings
+    models:
+      - provider: openai
+        model: text-embedding-3-large
+
+# ── Redis Tracker Store ───────────────────────────────────────
+tracker_store:
+  type:       redis
+  url:        ${REDIS_HOST}
+  port:       ${REDIS_PORT}
+  db:         0
+  username:   default
+  password:   ${REDIS_PASSWORD}
+  key_prefix: "alazabrasa"
+  use_ssl:    ${REDIS_USE_SSL}
+
+# ── Redis Lock Store ──────────────────────────────────────────
+lock_store:
+  type:     redis
+  host:     ${REDIS_HOST}
+  port:     ${REDIS_PORT}
+  db:       0
+  username: default
+  password: ${REDIS_PASSWORD}
+  use_ssl:  ${REDIS_USE_SSL}
+
+# ── PostgreSQL Event Broker ───────────────────────────────────
+event_broker:
+  type:     SQL
+  dialect:  postgresql
+  url:      ${DB_HOST}
+  port:     ${DB_PORT}
+  db:       ${DB_NAME}
+  username: ${DB_USER}
+  password: ${DB_PASSWORD}

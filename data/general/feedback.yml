@@ -1,0 +1,20 @@
+flows:
+  leave_feedback:
+    name: leaving feedback
+    description: يجمع تقييم المستخدم (إعجاب / عدم إعجاب) بعد انتهاء المحادثة
+    if: false   # يُشغَّل فقط عبر link من goodbye_flow
+    steps:
+      - collect: feedback_rating
+        description: اطلب من المستخدم تقييم تجربته بـ 👍 أو 👎
+      - id: route_feedback
+        noop: true
+        next:
+          - if: slots.feedback_rating == "thumbs_up"
+            then: positive_response
+          - else: negative_response
+      - id: positive_response
+        action: utter_thankyou_positive
+        next: END
+      - id: negative_response
+        action: utter_thankyou_negative
+        next: END

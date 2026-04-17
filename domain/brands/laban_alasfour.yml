@@ -1,0 +1,5 @@
+version: "3.1"
+actions:
+  - action_laban_show_catalog
+  - action_laban_bulk_quote
+  - action_laban_check_delivery

@@ -1,0 +1,13 @@
+flows:
+  collect_lead:
+    description: يجمع بيانات التواصل مع العميل (الاسم والهاتف والطلب) لإرسالها لفريق المبيعات
+    name: collect lead
+    steps:
+      - collect: user_name
+        description: اسم العميل الكامل
+      - collect: user_phone
+        description: رقم هاتف التواصل مع العميل
+      - collect: user_message
+        description: وصف طلب العميل أو المشروع المطلوب
+      - action: action_submit_lead
+        next: END

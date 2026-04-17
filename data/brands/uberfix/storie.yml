@@ -1,0 +1,25 @@
+version: "3.1"
+
+stories:
+  - story: استفسار عن Brand Identity وطلب عرض سعر
+    steps:
+      - intent: greet
+      - action: utter_greet
+      - intent: ask_brand_services
+      - action: utter_brand_services
+      - intent: ask_brand_process
+      - action: utter_brand_process
+      - intent: ask_brand_quote
+      - action: utter_brand_quote
+      - action: collect_lead_form
+      - active_loop: collect_lead_form
+      - action: collect_lead_form
+      - active_loop: null
+      - action: action_submit_lead
+
+  - story: استعراض قطاعات Brand Identity
+    steps:
+      - intent: ask_brand_industries
+      - action: utter_brand_industries
+      - intent: ask_brand_portfolio
+      - action: utter_brand_portfolio

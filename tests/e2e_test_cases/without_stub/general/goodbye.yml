@@ -1,0 +1,29 @@
+test_cases:
+  - test_case: وداع بسيط مع انتقال للتغذية الراجعة
+    steps:
+      - user: "مع السلامة"
+        assertions:
+          - flow_started: "goodbye_flow"
+          - bot_uttered:
+              utter_name: "utter_goodbye"
+          - flow_started: "leave_feedback"
+          - bot_uttered:
+              utter_name: "utter_ask_feedback_rating"
+              buttons:
+                - payload: "/SetSlots(feedback_rating=thumbs_up)"
+                  title: "👍 ممتاز"
+                - payload: "/SetSlots(feedback_rating=thumbs_down)"
+                  title: "👎 يمكن تحسينه"
+
+  - test_case: وداع مع تقييم إيجابي
+    steps:
+      - user: "باي"
+        assertions:
+          - flow_started: "goodbye_flow"
+      - user: "/SetSlots(feedback_rating=thumbs_up)"
+        assertions:
+          - slot_was_set:
+              - name: "feedback_rating"
+                value: "thumbs_up"
+          - bot_uttered:
+              utter_name: "utter_thankyou_positive"

@@ -1,0 +1,290 @@
+version: "3.1"
+
+# ============================================================
+#  domain.yml — الدومين الموحد لمجموعة العزب (CALM)
+#  ملاحظة: يستخدم هذا الملف مع مجلد domain/ المجزأ.
+#  الـ slots والـ responses هنا مكملة لما في domain/
+# ============================================================
+
+# ══════════════════════════════════════════════════════════════
+#  Slots — كل الـ slots المستخدمة في الـ flows
+# ══════════════════════════════════════════════════════════════
+slots:
+  # ── هوية البراند ──────────────────────────────────────────
+  brand:
+    type: text
+    mappings:
+      - type: from_llm
+
+  agent_name:
+    type: text
+    initial_value: "مساعد العزب"
+    mappings:
+      - type: controlled
+
+  service_type:
+    type: text
+    mappings:
+      - type: from_llm
+
+  # ── بيانات العميل ─────────────────────────────────────────
+  user_name:
+    type: text
+    mappings:
+      - type: from_llm
+
+  user_phone:
+    type: text
+    mappings:
+      - type: from_llm
+
+  user_message:
+    type: text
+    mappings:
+      - type: from_llm
+
+  # ── تأكيد التحويل لموظف بشري ─────────────────────────────
+  confirm_human_handoff:
+    type: categorical
+    values:
+      - "Yes"
+      - "No"
+    mappings:
+      - type: from_llm
+
+  # ── تقييم تجربة المستخدم ─────────────────────────────────
+  feedback_rating:
+    type: categorical
+    values:
+      - thumbs_up
+      - thumbs_down
+    mappings:
+      - type: from_llm
+
+  # ── أسئلة مقترحة للـ help flow ───────────────────────────
+  example_questions:
+    type: text
+    mappings:
+      - type: controlled
+
+# ══════════════════════════════════════════════════════════════
+#  Responses — كل الـ utterances المستخدمة في الـ flows
+# ══════════════════════════════════════════════════════════════
+responses:
+
+  # ── Slots collect (يجب أن يطابق اسم الـ slot) ─────────────
+  utter_ask_feedback_rating:
+    - text: "كيف تقيّم تجربتك معنا اليوم؟ 🌟"
+      buttons:
+        - title: "👍 ممتاز"
+          payload: "/SetSlots(feedback_rating=thumbs_up)"
+        - title: "👎 يمكن تحسينه"
+          payload: "/SetSlots(feedback_rating=thumbs_down)"
+
+  utter_ask_confirm_human_handoff:
+    - text: "هل تريد التحدث مع أحد موظفينا مباشرة؟"
+      buttons:
+        - title: "✅ نعم"
+          payload: "/SetSlots(confirm_human_handoff=Yes)"
+        - title: "❌ لا"
+          payload: "/SetSlots(confirm_human_handoff=No)"
+
+  utter_ask_user_name:
+    - text: "ما اسمك الكريم؟"
+
+  utter_ask_user_phone:
+    - text: "ما رقم التواصل معك؟"
+
+  utter_ask_user_message:
+    - text: "اكتب رسالتك أو طلبك باختصار:"
+
+  # ── Hello / Welcome ────────────────────────────────────────
+  utter_hello:
+    - text: "أهلاً وسهلاً! كيف يمكنني مساعدتك اليوم؟ 😊"
+      metadata:
+        rephrase: true
+
+  utter_welcome:
+    - text: |
+        مرحبًا بك في مجموعة العزب! 👋
+        أنا مساعدك الذكي — هنا لمساعدتك في خدمات مجموعتنا المتكاملة.
+
+        🏗️ *Alazab Construction* — تنفيذ المشروعات المعمارية
+        ✨ *Luxury Finishing* — التشطيبات الراقية
+        🎨 *Brand Identity* — هوية العلامات التجارية
+        🔧 *UberFix* — الصيانة والتشغيل الذكي
+        🧱 *Laban Alasfour* — التوريدات والخامات
+
+        جرّب أحد هذه الأسئلة:
+        - ما هي خدمات Alazab Construction؟
+        - أريد عرض سعر لمشروع تشطيب
+        - أحتاج صيانة عاجلة
+        - أريد طلب مواد بناء بالجملة
+      metadata:
+        rephrase: true
+
+  # ── Help / FAQs ────────────────────────────────────────────
+  utter_what_can_you_do:
+    - text: |
+        أستطيع مساعدتك في خدمات مجموعة العزب المتكاملة:
+
+        🏗️ *Alazab Construction* — تنفيذ المشروعات السكنية والتجارية
+        ✨ *Luxury Finishing* — التشطيبات الراقية
+        🎨 *Brand Identity* — تصميم وتنفيذ هوية العلامات التجارية
+        🔧 *UberFix* — الصيانة الذكية (كهرباء، سباكة، تكييف)
+        🧱 *Laban Alasfour* — مواد البناء والخامات بالجملة
+
+        يمكنني أيضًا:
+        - تقديم عروض أسعار وتحويل طلباتك
+        - تتبع طلبات الصيانة
+        - التحويل لموظف بشري عند الحاجة
+      metadata:
+        rephrase: true
+
+  utter_top_faqs:
+    - text: |
+        إليك بعض الأسئلة الشائعة:
+
+        🏗️ ما هي خدمات Alazab Construction؟
+        ✨ ما خيارات التشطيب المتاحة؟
+        🎨 كيف تعملون على الهوية التجارية؟
+        🔧 أحتاج صيانة عاجلة
+        🧱 أريد طلب مواد بناء بالجملة
+      metadata:
+        rephrase: true
+
+  # ── Goodbye / Feedback ────────────────────────────────────
+  utter_goodbye:
+    - text: "شكرًا لتواصلك مع مجموعة العزب. نتطلع لخدمتك دائمًا! 🤝"
+    - text: "وداعًا! لا تتردد في التواصل معنا في أي وقت. 😊"
+
+  utter_thankyou_positive:
+    - text: "سعيد بذلك! شكرًا على تقييمك الإيجابي. 🎉"
+    - text: "رائع! يسعدنا أن تجربتك كانت جيدة. نراك قريبًا! 😊"
+
+  utter_thankyou_negative:
+    - text: "نشكرك على صراحتك. ملاحظاتك تساعدنا على التحسين المستمر. 🙏"
+
+  # ── Human Handoff ─────────────────────────────────────────
+  utter_transferring_to_human:
+    - text: "سيتم تحويلك لأحد موظفينا خلال لحظات. شكرًا لصبرك! ⏳"
+
+  utter_human_handoff_cancelled:
+    - text: "حسنًا، لا مشكلة. كيف يمكنني مساعدتك؟"
+      metadata:
+        rephrase: true
+
+  utter_transfer_to_manager:
+    - text: "سأحوّل ملخص المحادثة التالي لفريقنا:\n{summary}"
+
+  # ── Lead ──────────────────────────────────────────────────
+  utter_lead_submitted:
+    - text: "✅ شكراً! وصل طلبك وسيتواصل معك فريقنا في أقرب وقت."
+
+  # ── Cannot Handle ─────────────────────────────────────────
+  utter_no_relevant_answer_found:
+    - text: "عذراً، لم أجد إجابة مناسبة. هل تريد التحدث مع أحد موظفينا؟"
+      metadata:
+        rephrase: true
+
+  utter_help:
+    - text: "كيف يمكنني مساعدتك اليوم؟"
+      metadata:
+        rephrase: true
+
+  # ── Brands ────────────────────────────────────────────────
+  utter_alazab_services:
+    - text: |
+        🏗️ *Alazab Construction* تقدم:
+        • إدارة وتنفيذ المشروعات السكنية
+        • المشروعات التجارية والخدمية
+        • الإشراف الهندسي الكامل
+        هل تريد عرض سعر؟
+      metadata:
+        rephrase: true
+
+  utter_luxury_services:
+    - text: |
+        ✨ *Luxury Finishing* متخصصة في:
+        • تشطيبات الوحدات السكنية الراقية
+        • التصميم الداخلي الفاخر
+        • الإشراف على التنفيذ بدقة عالية
+      metadata:
+        rephrase: true
+
+  utter_brand_services:
+    - text: |
+        🎨 *Brand Identity* تنفذ:
+        • تصميم وتنفيذ هوية العلامة التجارية
+        • تجهيز المحلات والمساحات التجارية
+        • من الفكرة حتى التسليم الكامل
+      metadata:
+        rephrase: true
+
+  utter_uberfix_services:
+    - text: |
+        🔧 *UberFix* — منصة الصيانة الذكية:
+        • صيانة كهرباء، سباكة، تكييف
+        • صيانة دورية للمنازل والمنشآت
+        • عقود تشغيل سنوية
+      metadata:
+        rephrase: true
+
+  utter_laban_products:
+    - text: |
+        🧱 *Laban Alasfour* توفر:
+        • مواد البناء والخامات المعمارية
+        • مستلزمات التشطيب والصيانة
+        • خامات بكميات الجملة والتجزئة
+      metadata:
+        rephrase: true
+
+# ══════════════════════════════════════════════════════════════
+#  Actions
+# ══════════════════════════════════════════════════════════════
+actions:
+  # ── Utterances ────────────────────────────────────────────
+  - utter_hello
+  - utter_welcome
+  - utter_goodbye
+  - utter_help
+  - utter_what_can_you_do
+  - utter_top_faqs
+  - utter_no_relevant_answer_found
+  - utter_ask_feedback_rating
+  - utter_thankyou_positive
+  - utter_thankyou_negative
+  - utter_ask_confirm_human_handoff
+  - utter_transferring_to_human
+  - utter_human_handoff_cancelled
+  - utter_transfer_to_manager
+  - utter_ask_user_name
+  - utter_ask_user_phone
+  - utter_ask_user_message
+  - utter_lead_submitted
+  - utter_alazab_services
+  - utter_luxury_services
+  - utter_brand_services
+  - utter_uberfix_services
+  - utter_laban_products
+  # ── Custom Actions ────────────────────────────────────────
+  - action_submit_lead
+  - action_human_handoff
+  - validate_collect_lead_form
+  - action_alazab_get_quote
+  - action_alazab_show_projects
+  - action_luxury_get_quote
+  - action_luxury_show_materials
+  - action_brand_get_quote
+  - action_brand_show_process
+  - action_brand_show_industries
+  - action_uberfix_create_request
+  - action_uberfix_track_request
+  - action_uberfix_show_subscriptions
+  - action_laban_show_catalog
+  - action_laban_bulk_quote
+  - action_laban_check_delivery
+
+session_config:
+  session_expiration_time: 60
+  carry_over_slots_to_new_session: false

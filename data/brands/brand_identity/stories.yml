@@ -1,0 +1,25 @@
+version: "3.1"
+
+stories:
+  - story: استفسار عن التشطيب الفاخر وعرض سعر
+    steps:
+      - intent: greet
+      - action: utter_greet
+      - intent: ask_luxury_services
+      - action: utter_luxury_services
+      - intent: ask_luxury_materials
+      - action: utter_luxury_materials
+      - intent: ask_luxury_quote
+      - action: utter_luxury_quote
+      - action: collect_lead_form
+      - active_loop: collect_lead_form
+      - action: collect_lead_form
+      - active_loop: null
+      - action: action_submit_lead
+
+  - story: مشاهدة بورتفوليو ثم التواصل
+    steps:
+      - intent: ask_luxury_portfolio
+      - action: utter_luxury_portfolio
+      - intent: ask_luxury_timeline
+      - action: utter_luxury_timeline

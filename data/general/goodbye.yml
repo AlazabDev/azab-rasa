@@ -1,0 +1,6 @@
+flows:
+  goodbye_flow:
+    description: تدفق توديع المستخدم وجمع التغذية الراجعة عند انتهاء المحادثة
+    steps:
+      - action: utter_goodbye
+      - link: leave_feedback

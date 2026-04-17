@@ -1,0 +1,6 @@
+flows:
+  show_faqs:
+    description: يعرض للمستخدم أمثلة على الأسئلة الشائعة التي يمكن طرحها على المساعد
+    name: show_faqs
+    steps:
+      - action: utter_top_faqs

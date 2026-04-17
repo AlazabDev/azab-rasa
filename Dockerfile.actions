@@ -1,0 +1,27 @@
+# ============================================================
+#  Dockerfile.actions — Actions Server لمجموعة العزب
+# ============================================================
+FROM python:3.11-slim
+
+WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# تثبيت التبعيات أولاً لتسريع إعادة البناء
+COPY pyproject.toml ./
+RUN pip install --no-cache-dir \
+    rasa-sdk>=3.16 \
+    httpx>=0.27.0 \
+    openai>=1.0.0 \
+    python-dotenv>=1.0.0
+
+COPY endpoints.yml ./endpoints.yml
+
+# نسخ الـ actions
+COPY actions/ ./actions/
+
+EXPOSE 5055
+
+CMD ["python", "-m", "rasa_sdk", "--actions", "actions", "--port", "5055"]

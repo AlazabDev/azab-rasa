@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Alazab Bot Control Center</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="admin-shell">
+    <aside class="sidebar">
+      <div class="brand-box">
+        <img src="/widget/alazab_rasa.svg" alt="Alazab" onerror="this.style.display='none'" />
+        <div>
+          <span>Alazab AI</span>
+          <strong>مركز إدارة البوت</strong>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <button class="nav-btn active" data-target="overview">النظرة العامة</button>
+        <button class="nav-btn" data-target="playground">تجربة البوت</button>
+        <button class="nav-btn" data-target="widget">إدارة الزر والودجت</button>
+        <button class="nav-btn" data-target="assets">المعرفة والموديلات</button>
+        <button class="nav-btn" data-target="embed">كود الدمج</button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <small>Professional Bot Management UI</small>
+        <strong id="appVersion">v3.0.0</strong>
+      </div>
+    </aside>
+
+    <main class="content">
+      <header class="topbar">
+        <div>
+          <h1>لوحة تحكم البوت</h1>
+          <p>إدارة الحالة، اختبار التدفق، والتحكم في زر الدردشة من مكان واحد.</p>
+        </div>
+        <div class="top-actions">
+          <button id="refreshOverviewBtn" class="ghost-btn">تحديث البيانات</button>
+        </div>
+      </header>
+
+      <section class="view active" id="overviewView">
+        <div class="cards-grid stats-grid">
+          <article class="stat-card">
+            <span>حالة الخدمة</span>
+            <strong id="healthStatus">...</strong>
+            <small id="healthMeta">جارٍ الفحص</small>
+          </article>
+          <article class="stat-card">
+            <span>الموديلات</span>
+            <strong id="modelsCount">0</strong>
+            <small>عدد ملفات النماذج الجاهزة</small>
+          </article>
+          <article class="stat-card">
+            <span>الملفات المعرفية</span>
+            <strong id="docsCount">0</strong>
+            <small>مستندات docs المستخدمة في البحث</small>
+          </article>
+          <article class="stat-card">
+            <span>العلامة الافتراضية</span>
+            <strong id="defaultBrand">-</strong>
+            <small>البراند المرتبط بواجهة الإدارة</small>
+          </article>
+        </div>
+
+        <div class="cards-grid split-grid">
+          <article class="panel">
+            <div class="panel-head">
+              <h2>أعلام التشغيل</h2>
+            </div>
+            <div id="flagsGrid" class="flags-grid"></div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head">
+              <h2>العلامات التجارية</h2>
+            </div>
+            <div id="brandsList" class="stack-list"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="view" id="playgroundView">
+        <div class="cards-grid split-grid">
+          <article class="panel">
+            <div class="panel-head">
+              <h2>اختبار مباشر للبوت</h2>
+            </div>
+            <form id="playgroundForm" class="form-grid">
+              <label>
+                <span>المرسل</span>
+                <input id="senderIdInput" type="text" value="admin_console_user" />
+              </label>
+              <label>
+                <span>العلامة التجارية</span>
+                <select id="brandSelect"></select>
+              </label>
+              <label class="full-span">
+                <span>الرسالة</span>
+                <textarea id="messageInput" rows="4" placeholder="اكتب رسالة اختبارية للبوت..."></textarea>
+              </label>
+              <div class="form-actions full-span">
+                <button type="submit" class="primary-btn">إرسال للبوت</button>
+                <button type="button" id="loadTrackerBtn" class="ghost-btn">تحميل التراكر</button>
+              </div>
+            </form>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head">
+              <h2>الردود</h2>
+            </div>
+            <div id="responseBox" class="console-box empty-state">لم يتم إرسال شيء بعد.</div>
+          </article>
+        </div>
+
+        <article class="panel">
+          <div class="panel-head">
+            <h2>آخر أحداث التراكر</h2>
+          </div>
+          <div id="trackerBox" class="console-box empty-state">حمّل التراكر بعد تجربة المحادثة.</div>
+        </article>
+      </section>
+
+      <section class="view" id="widgetView">
+        <div class="cards-grid split-grid">
+          <article class="panel">
+            <div class="panel-head">
+              <h2>إعدادات الودجت</h2>
+            </div>
+            <form id="widgetConfigForm" class="form-grid">
+              <label>
+                <span>عنوان API</span>
+                <input id="widgetApiUrl" type="text" value="/chat" />
+              </label>
+              <label>
+                <span>العلامة التجارية الافتراضية</span>
+                <select id="widgetBrandSelect"></select>
+              </label>
+              <label>
+                <span>عنوان الزر</span>
+                <input id="widgetLauncherTitle" type="text" value="افتح المحادثة" />
+              </label>
+              <label>
+                <span>عنوان البطاقة</span>
+                <input id="widgetHeaderTitle" type="text" value="عزبوت (AzBot)" />
+              </label>
+              <div class="form-actions full-span">
+                <button type="submit" class="primary-btn">تطبيق على المعاينة</button>
+                <button type="button" id="openWidgetBtn" class="ghost-btn">فتح الودجت</button>
+                <button type="button" id="sendPresetBtn" class="ghost-btn">إرسال رسالة جاهزة</button>
+              </div>
+            </form>
+          </article>
+
+          <article class="panel preview-panel">
+            <div class="panel-head">
+              <h2>معاينة حية</h2>
+            </div>
+            <div class="preview-stage">
+              <div class="preview-note">
+                هذه المنطقة مجرد معاينة. الزر الحقيقي يتم حقنه تلقائيًا أسفل الصفحة.
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="view" id="assetsView">
+        <div class="cards-grid split-grid">
+          <article class="panel">
+            <div class="panel-head">
+              <h2>ملفات الموديلات</h2>
+            </div>
+            <div id="modelsList" class="stack-list"></div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head">
+              <h2>ملفات المعرفة</h2>
+            </div>
+            <div id="docsList" class="stack-list"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="view" id="embedView">
+        <div class="cards-grid split-grid">
+          <article class="panel">
+            <div class="panel-head">
+              <h2>سطر الدمج</h2>
+            </div>
+            <pre id="embedSnippet" class="code-box"></pre>
+            <button id="copyEmbedBtn" class="primary-btn compact-btn">نسخ الكود</button>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head">
+              <h2>أوامر الاستدعاء</h2>
+            </div>
+            <pre id="invokeSnippet" class="code-box"></pre>
+          </article>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/widget/alazab-chat-widget.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

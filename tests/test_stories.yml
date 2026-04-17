@@ -1,0 +1,145 @@
+version: "3.1"
+
+# ============================================================
+#  test_stories.yml — اختبارات شاملة لكل العلامات
+#  تشغيل: rasa test
+# ============================================================
+
+stories:
+  # ── اختبارات عامة ─────────────────────────────────────
+  - story: test_greet_and_help
+    steps:
+      - user: |
+          مرحبا
+        intent: greet
+      - action: utter_greet
+      - user: |
+          ايه اللي تقدر تعمله
+        intent: ask_help
+      - action: utter_ask_help
+
+  - story: test_out_of_scope
+    steps:
+      - user: |
+          كلمني عن الكورة
+        intent: out_of_scope
+      - action: utter_out_of_scope
+
+  # ── اختبارات Alazab Construction ──────────────────────
+  - story: test_alazab_services_flow
+    steps:
+      - user: |
+          ايه خدمات Alazab Construction
+        intent: ask_alazab_services
+      - action: utter_alazab_services
+      - user: |
+          عايز عرض سعر
+        intent: ask_alazab_quote
+      - action: utter_alazab_quote
+
+  - story: test_alazab_about
+    steps:
+      - user: |
+          من هي Alazab Construction
+        intent: ask_alazab_about
+      - action: utter_alazab_about
+
+  # ── اختبارات Luxury Finishing ──────────────────────────
+  - story: test_luxury_services_and_materials
+    steps:
+      - user: |
+          بتعملوا تشطيبات فاخرة
+        intent: ask_luxury_services
+      - action: utter_luxury_services
+      - user: |
+          بتستخدموا خامات ايه
+        intent: ask_luxury_materials
+      - action: utter_luxury_materials
+
+  - story: test_luxury_timeline
+    steps:
+      - user: |
+          قد ايه وقت التشطيب
+        intent: ask_luxury_timeline
+      - action: utter_luxury_timeline
+
+  # ── اختبارات Brand Identity ────────────────────────────
+  - story: test_brand_process
+    steps:
+      - user: |
+          ازاي بتشتغلوا في الهوية التجارية
+        intent: ask_brand_process
+      - action: utter_brand_process
+
+  - story: test_brand_industries
+    steps:
+      - user: |
+          مطاعم وكافيهات بتخدموا
+        intent: ask_brand_industries
+      - action: utter_brand_industries
+
+  # ── اختبارات UberFix ───────────────────────────────────
+  - story: test_uberfix_emergency
+    steps:
+      - user: |
+          في طوارئ عندي محتاج حد فوراً
+        intent: ask_uberfix_emergency
+      - action: utter_uberfix_emergency
+
+  - story: test_uberfix_subscription
+    steps:
+      - user: |
+          عندكم باقات صيانة سنوية
+        intent: ask_uberfix_subscription
+      - action: utter_uberfix_subscription
+
+  # ── اختبارات Laban Alasfour ────────────────────────────
+  - story: test_laban_products
+    steps:
+      - user: |
+          ايه منتجاتكم من مواد البناء
+        intent: ask_laban_products
+      - action: utter_laban_products
+
+  - story: test_laban_bulk_and_delivery
+    steps:
+      - user: |
+          عايز طلب بالجملة
+        intent: ask_laban_bulk_order
+      - action: utter_laban_bulk_order
+      - user: |
+          بتوصلوا للمواقع
+        intent: ask_laban_delivery
+      - action: utter_laban_delivery
+
+  # ── اختبار نموذج التواصل ──────────────────────────────
+  - story: test_lead_form_completion
+    steps:
+      - user: |
+          عايز عرض سعر
+        intent: ask_alazab_quote
+      - action: utter_alazab_quote
+      - action: collect_lead_form
+      - active_loop: collect_lead_form
+      - slot_was_set:
+          - requested_slot: user_name
+      - user: |
+          أحمد محمد
+        intent: affirm
+        entities:
+          - text: أحمد محمد
+      - action: collect_lead_form
+      - slot_was_set:
+          - requested_slot: user_phone
+      - user: |
+          01012345678
+        intent: affirm
+      - action: collect_lead_form
+      - slot_was_set:
+          - requested_slot: user_message
+      - user: |
+          عايز أبني عمارة سكنية
+        intent: affirm
+      - action: collect_lead_form
+      - active_loop: null
+      - action: action_submit_lead

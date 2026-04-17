@@ -1,0 +1,50 @@
+# بيئة
+.env
+.python-version
+__pycache__/
+*.pyc
+*.pyo
+.rasa/
+models/
+
+# تبعيات
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Rasa
+results/
+graph.html
+
+# Docker
+.docker/
+
+# SSL
+ssl/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Production secrets
+.env.production
+.env.production.local
+
+env.rasa.txt
+smoke-*.txt
+smoke-*.webm
+smoke-*.wav
+test-upload.txt
+test-voice.wav
+.tmp-smoke/
+
+# Python-only local/prod env
+.env.nodocker
+.env.nodocker.local
+

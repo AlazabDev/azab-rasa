@@ -1,0 +1,15 @@
+flows:
+  human_handoff:
+    description: عندما يعجز المساعد عن المساعدة أو يطلب المستخدم التحدث مع موظف بشري — يعرض تحويل المحادثة لوكيل بشري
+    steps:
+      - collect: confirm_human_handoff
+        ask_before_filling: true
+        next:
+          - if: slots.confirm_human_handoff == "Yes"
+            then:
+              - action: utter_transferring_to_human
+              - action: action_human_handoff
+                next: END
+          - else:
+            - action: utter_human_handoff_cancelled
+              next: END

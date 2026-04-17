@@ -1,0 +1,6 @@
+flows:
+  help:
+    description: يجيب على سؤال المستخدم عمّا يستطيع المساعد فعله وما هي الخدمات المتاحة
+    name: help
+    steps:
+      - action: utter_what_can_you_do

@@ -1,0 +1,23 @@
+test_cases:
+  - test_case: عرض خدمات UberFix
+    steps:
+      - user: "ما هي خدمات UberFix؟"
+        assertions:
+          - flow_started: "uberfix_services"
+          - bot_uttered:
+              utter_name: "utter_uberfix_services"
+
+  - test_case: طلب صيانة طارئة
+    steps:
+      - user: "أحتاج صيانة عاجلة جدًا"
+        assertions:
+          - flow_started: "uberfix_emergency"
+          - bot_uttered:
+              utter_name: "utter_uberfix_emergency"
+
+  - test_case: عرض باقات الاشتراك
+    steps:
+      - user: "ما هي باقات الاشتراك السنوية في UberFix؟"
+        assertions:
+          - flow_started: "uberfix_subscriptions"
+          - action_executed: action_uberfix_show_subscriptions

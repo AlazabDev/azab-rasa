@@ -1,0 +1,16 @@
+test_cases:
+  - test_case: ترحيب بسيط بالعربية
+    steps:
+      - user: "مرحبا"
+        assertions:
+          - flow_started: "hello"
+          - bot_uttered:
+              utter_name: "utter_hello"
+
+  - test_case: ترحيب بالسلام
+    steps:
+      - user: "السلام عليكم"
+        assertions:
+          - flow_started: "hello"
+          - bot_uttered:
+              utter_name: "utter_hello"

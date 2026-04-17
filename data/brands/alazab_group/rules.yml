@@ -1,0 +1,61 @@
+version: "3.1"
+
+rules:
+  - rule: رد على التحية
+    steps:
+      - intent: greet
+      - action: utter_greet
+
+  - rule: رد على الوداع
+    steps:
+      - intent: goodbye
+      - action: utter_goodbye
+
+  - rule: رد على الشكر
+    steps:
+      - intent: thanks
+      - action: utter_thanks
+
+  - rule: طلب المساعدة
+    steps:
+      - intent: ask_help
+      - action: utter_ask_help
+
+  - rule: تحدي البوت
+    steps:
+      - intent: bot_challenge
+      - action: utter_bot_challenge
+
+  - rule: خارج النطاق
+    steps:
+      - intent: out_of_scope
+      - action: utter_out_of_scope
+
+  # ── Lead Form ──────────────────────────────────────
+  - rule: بدء نموذج التواصل
+    steps:
+      - intent: ask_alazab_quote
+      - action: collect_lead_form
+      - active_loop: collect_lead_form
+
+  - rule: بدء نموذج التواصل - Luxury
+    steps:
+      - intent: ask_luxury_quote
+      - action: collect_lead_form
+      - active_loop: collect_lead_form
+
+  - rule: بدء نموذج التواصل - Brand
+    steps:
+      - intent: ask_brand_quote
+      - action: collect_lead_form
+      - active_loop: collect_lead_form
+
+  - rule: إتمام نموذج التواصل
+    condition:
+      - active_loop: collect_lead_form
+    steps:
+      - action: collect_lead_form
+      - active_loop: null
+      - slot_was_set:
+          - requested_slot: null
+      - action: action_submit_lead

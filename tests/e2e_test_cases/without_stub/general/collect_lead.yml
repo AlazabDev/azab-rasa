@@ -1,0 +1,29 @@
+test_cases:
+  - test_case: جمع بيانات عميل كامل
+    steps:
+      - user: "أريد عرض سعر"
+        assertions:
+          - flow_started: "alazab_get_quote"
+          - bot_uttered:
+              utter_name: "utter_ask_user_name"
+      - user: "أحمد محمد"
+        assertions:
+          - slot_was_set:
+              - name: "user_name"
+                value: "أحمد محمد"
+          - bot_uttered:
+              utter_name: "utter_ask_user_phone"
+      - user: "01012345678"
+        assertions:
+          - slot_was_set:
+              - name: "user_phone"
+                value: "01012345678"
+          - bot_uttered:
+              utter_name: "utter_ask_user_message"
+      - user: "أريد بناء عمارة سكنية في القاهرة الجديدة"
+        assertions:
+          - slot_was_set:
+              - name: "user_message"
+          - action_executed: action_submit_lead
+          - bot_uttered:
+              utter_name: "utter_lead_submitted"

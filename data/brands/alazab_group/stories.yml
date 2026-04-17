@@ -1,0 +1,25 @@
+version: "3.1"
+
+stories:
+  - story: محادثة ترحيب ومساعدة عامة
+    steps:
+      - intent: greet
+      - action: utter_greet
+      - intent: ask_help
+      - action: utter_ask_help
+
+  - story: محادثة قصيرة - تحية ووداع
+    steps:
+      - intent: greet
+      - action: utter_greet
+      - intent: goodbye
+      - action: utter_goodbye
+
+  - story: سؤال عن الخدمات ثم وداع
+    steps:
+      - intent: ask_help
+      - action: utter_ask_help
+      - intent: thanks
+      - action: utter_thanks
+      - intent: goodbye
+      - action: utter_goodbye
