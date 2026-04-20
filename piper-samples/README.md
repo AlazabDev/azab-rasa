@@ -19,11 +19,18 @@ small.
 | `_script/` | Utility scripts for copying, exporting, and generating samples. |
 | `index.html`, `demo.html`, `main.js` | Local browser demos for inspecting samples. |
 | `voices.json` | Voice catalog used by the demo tooling. |
+| `requirements.optional.txt` | Optional Python dependencies for Piper experiments. Not part of the app runtime. |
 
 ## Operational Notes
 
 - Do not mount or copy this directory into production containers unless voice
   experiments are explicitly needed.
+- Install optional Piper tooling only when working inside this directory:
+
+```powershell
+python -m pip install -r piper-samples\requirements.optional.txt
+```
+
 - Keep generated one-off audio outside the project root or under a clearly named
   temporary folder.
 - Before committing new audio/model assets, check the size impact with:
