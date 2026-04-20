@@ -37,7 +37,7 @@ alazab-rasa/
 │   ├── nginx.conf                  # Reverse proxy + SSL + Rate limiting
 │   ├── deploy.sh                   # سكربت نشر إنتاجي متكامل
 │   ├── Makefile                    # أوامر مختصرة للتطوير والإنتاج
-│   ├── .env.example                # نموذج متغيرات البيئة
+│   ├── .env                        # متغيرات البيئة الفعلية (غير متتبع في Git)
 │   └── .gitignore
 │
 ├── 🤖 Rasa Core
@@ -111,8 +111,8 @@ git clone https://github.com/alazab/alazab-rasa.git
 cd alazab-rasa
 
 # 2. إعداد البيئة
-make setup          # ينسخ .env.example → .env
-# عدّل .env بالقيم الفعلية
+# أضف ملف .env من مصدر الأسرار الآمن، ثم شغّل:
+make setup
 
 # 3. نشر كامل (train → validate → docker up)
 make deploy
@@ -140,6 +140,41 @@ make test           # اختبارات E2E
 make widget         # فتح صفحة معاينة الـ Widget
 make clean          # حذف النماذج المؤقتة
 make deploy         # نشر إنتاجي كامل
+```
+
+---
+
+## 🧪 تجهيز المشروع للاختبار
+
+قبل تشغيل الاختبارات تأكد أن `.env` يحتوي القيم الفعلية المطلوبة، ثم شغّل:
+
+```bash
+make test-preflight
+```
+
+لرفع بيئة اختبار Docker كاملة:
+
+```bash
+make test-stack
+make status
+```
+
+بعد جاهزية الخدمات، شغّل اختبارات smoke على صفحات البراندات والـ chat/upload/audio:
+
+```bash
+make test-smoke
+```
+
+لإيقاف بيئة الاختبار:
+
+```bash
+make test-stack-down
+```
+
+على Windows يمكن تشغيل نفس الفحص مباشرة:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\test-preflight.ps1 -EnvFile .env -ComposeFile docker-compose.yaml
 ```
 
 ---

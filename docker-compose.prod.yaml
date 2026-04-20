@@ -11,7 +11,7 @@ x-logging: &default-logging
 
 x-common-env: &common-env
   env_file:
-    - ${APP_ENV_FILE:-.env.production}
+    - ${APP_ENV_FILE:-.env}
 
 services:
   redis:
@@ -68,6 +68,8 @@ services:
     command: >
       run --enable-api --cors "${ALLOWED_ORIGINS}" --port 5005
     depends_on:
+      rasa-train:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
       postgres:
@@ -83,6 +85,36 @@ services:
       retries: 5
       start_period: 60s
 
+  rasa-train:
+    image: ${RASA_IMAGE:-rasa/rasa-pro:3.16.3}
+    <<: *common-env
+    volumes:
+      - .:/app
+      - rasa_models:/app/models
+    environment:
+      ACTION_SERVER_URL: http://rasa-actions:5055/webhook
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_USE_SSL: ${REDIS_USE_SSL:-false}
+      RASA_TELEMETRY_ENABLED: "false"
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        if [ "$${TRAIN_ON_DEPLOY:-false}" = "true" ] || ! find /app/models -maxdepth 1 -name "*.tar.gz" -print -quit | grep -q .; then
+          rasa train --force;
+        else
+          echo "Existing Rasa model found; skipping training.";
+        fi
+    networks:
+      - alazab-net
+    restart: "no"
+    logging: *default-logging
   rasa-actions:
     build:
       context: .

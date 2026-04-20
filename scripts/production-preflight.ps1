@@ -1,5 +1,5 @@
 param(
-    [string]$EnvFile = ".env.production",
+    [string]$EnvFile = ".env",
     [string]$ComposeFile = "docker-compose.prod.yaml"
 )
 
@@ -39,7 +39,7 @@ Write-Host "Compose: $ComposeFile"
 Write-Host ""
 
 if (-not (Test-Path $EnvFile)) {
-    Fail "$EnvFile is missing. Copy .env.production.example to .env.production and fill real values."
+    Fail "$EnvFile is missing. Provide the real environment file before running production checks."
 } else {
     Pass "$EnvFile exists"
 }

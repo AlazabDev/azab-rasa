@@ -2,7 +2,7 @@
 #  Makefile — Alazab Group Chatbot
 #  يدعم التشغيل المحلي و Docker Compose للإنتاج
 # ============================================================
-.PHONY: help setup install train validate run run-train stop test clean ssl-dev ssl-prod register-telegram up down logs logs-webhook status deploy widget nodocker-setup nodocker-up nodocker-down nodocker-check nodocker-logs prod-preflight prod-config prod-up prod-down prod-logs prod-status
+.PHONY: help setup install train validate run run-train stop test test-preflight test-smoke test-stack test-stack-down clean ssl-dev ssl-prod register-telegram up down logs logs-webhook status deploy widget nodocker-setup nodocker-up nodocker-down nodocker-check nodocker-logs prod-preflight prod-config prod-up prod-down prod-logs prod-status
 
 COLOR_GREEN  = \033[32m
 COLOR_YELLOW = \033[33m
@@ -20,8 +20,8 @@ help: ## عرض المساعدة
 
 setup: ## إعداد البيئة الأولية
 	@if [ ! -f .env ]; then \
-		cp .env.example .env; \
-		echo "$(COLOR_YELLOW)⚙️  تم إنشاء .env — أضف مفاتيحك$(COLOR_RESET)"; \
+		echo "$(COLOR_RED)❌ ملف .env غير موجود — أضفه من مصدر الأسرار الآمن$(COLOR_RESET)"; \
+		exit 1; \
 	fi
 	@python3 -m venv venv 2>/dev/null || true
 	@echo "$(COLOR_GREEN)✅ جاهز — شغّل: source venv/bin/activate$(COLOR_RESET)"
@@ -71,6 +71,18 @@ stop: ## إيقاف جميع الخدمات
 test: ## تشغيل اختبارات E2E
 	@. venv/bin/activate && rasa test e2e tests/e2e_test_cases/
 
+test-preflight: ## فحص جاهزية بيئة الاختبار بدون تشغيل الخدمات
+	@powershell -ExecutionPolicy Bypass -File ./scripts/test-preflight.ps1 -EnvFile .env -ComposeFile docker-compose.yaml
+
+test-stack: ## تشغيل Stack الاختبار عبر Docker Compose
+	@docker compose --env-file .env -f docker-compose.yaml up -d --build
+
+test-smoke: ## اختبار API/Widget بعد تشغيل Stack الاختبار
+	@powershell -ExecutionPolicy Bypass -File ./scripts/test-preflight.ps1 -EnvFile .env -ComposeFile docker-compose.yaml -RunSmoke
+
+test-stack-down: ## إيقاف Stack الاختبار
+	@docker compose --env-file .env -f docker-compose.yaml down --remove-orphans
+
 clean: ## حذف النماذج والملفات المؤقتة
 	@rm -rf models/ results/ .rasa/
 	@find . -name "__pycache__" -exec rm -rf {} + 2>/dev/null; true
@@ -92,19 +104,19 @@ prod-preflight: ## فحص جاهزية الإنتاج قبل النشر
 	@powershell -ExecutionPolicy Bypass -File ./scripts/production-preflight.ps1
 
 prod-config: ## التحقق من docker-compose.prod.yaml
-	@docker compose --env-file .env.production -f docker-compose.prod.yaml config
+	@docker compose --env-file .env -f docker-compose.prod.yaml config
 
 prod-up: ## تشغيل الإنتاج عبر docker-compose.prod.yaml
-	@docker compose --env-file .env.production -f docker-compose.prod.yaml up -d --build
+	@docker compose --env-file .env -f docker-compose.prod.yaml up -d --build
 
 prod-down: ## إيقاف الإنتاج
-	@docker compose --env-file .env.production -f docker-compose.prod.yaml down --remove-orphans
+	@docker compose --env-file .env -f docker-compose.prod.yaml down --remove-orphans
 
 prod-logs: ## سجلات الإنتاج
-	@docker compose --env-file .env.production -f docker-compose.prod.yaml logs -f
+	@docker compose --env-file .env -f docker-compose.prod.yaml logs -f
 
 prod-status: ## حالة خدمات الإنتاج
-	@docker compose --env-file .env.production -f docker-compose.prod.yaml ps
+	@docker compose --env-file .env -f docker-compose.prod.yaml ps
 
 
 nodocker-setup: ## إنشاء .env.nodocker من القالب

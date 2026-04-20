@@ -31,8 +31,8 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB:       alazab_chatbot
-      POSTGRES_USER:     alazab_user
+      POSTGRES_DB:       ${DB_NAME}
+      POSTGRES_USER:     ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -41,7 +41,7 @@ services:
     restart: unless-stopped
     logging: *default-logging
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U alazab_user -d alazab_chatbot"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -71,6 +71,8 @@ services:
     command: >
       run --enable-api --cors "*" --port 5005
     depends_on:
+      rasa-train:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
       postgres:
@@ -85,6 +87,44 @@ services:
       timeout: 10s
       retries: 5
       start_period: 60s
+
+  # ── Rasa Model Trainer (one-shot for fresh test environments) ──────
+  rasa-train:
+    image: rasa/rasa-pro:3.16.3
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+      - rasa_models:/app/models
+    environment:
+      ACTION_SERVER_URL:      http://rasa-actions:5055/webhook
+      DB_HOST:                postgres
+      DB_PORT:                5432
+      DB_NAME:                ${DB_NAME}
+      DB_USER:                ${DB_USER}
+      DB_PASSWORD:            ${DB_PASSWORD}
+      REDIS_HOST:             redis
+      REDIS_PORT:             6379
+      REDIS_PASSWORD:         ${REDIS_PASSWORD}
+      REDIS_USE_SSL:          ${REDIS_USE_SSL:-false}
+      RASA_TELEMETRY_ENABLED: "false"
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        if [ "$${TRAIN_ON_DEPLOY:-false}" = "true" ] || ! find /app/models -maxdepth 1 -name "*.tar.gz" -print -quit | grep -q .; then
+          rasa train --force;
+        else
+          echo "Existing Rasa model found; skipping training.";
+        fi
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - alazab-net
+    restart: "no"
+    logging: *default-logging
 
   # ── Actions Server ────────────────────────────────────────
   rasa-actions:

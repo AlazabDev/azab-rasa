@@ -200,6 +200,17 @@ def _count(channel: str) -> None:
     _stats[channel] += 1
 
 
+def _require_admin(request: Request) -> None:
+    if not ADMIN_API_KEY:
+        return
+
+    token = request.headers.get("X-Admin-Token") or ""
+    if hmac.compare_digest(token, ADMIN_API_KEY):
+        return
+
+    raise HTTPException(status_code=401, detail="Admin token required")
+
+
 # ══════════════════════════════════════════════════════════════
 #  Pydantic Models
 # ══════════════════════════════════════════════════════════════
@@ -748,16 +759,6 @@ def _verify_meta_signature(body: bytes, signature: str) -> bool:
     return hmac.compare_digest(expected, signature)
 
 
-
-def _require_admin(request: Request) -> None:
-    if not ADMIN_API_KEY:
-        return
-
-    token = request.headers.get("X-Admin-Token") or ""
-    if hmac.compare_digest(token, ADMIN_API_KEY):
-        return
-
-    raise HTTPException(status_code=401, detail="Admin token required")
 def _extract_hostname(value: Optional[str]) -> Optional[str]:
     if not value:
         return None
@@ -989,5 +990,4 @@ def _build_audio_prompt(
 
 def _serialize_attachment(attachment: dict[str, Any]) -> dict[str, Any]:
     return {k: v for k, v in attachment.items() if k != "path"}
-
 
