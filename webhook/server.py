@@ -64,7 +64,7 @@ from fastapi import (
     UploadFile,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
+from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, Response
 from fastapi.staticfiles import StaticFiles
 from openai import AsyncOpenAI
 from pydantic import BaseModel, field_validator
@@ -108,6 +108,8 @@ ALLOWED_FILE_EXTENSIONS = {
 }
 AUDIO_FILE_EXTENSIONS = {".mp3", ".wav", ".ogg", ".m4a", ".webm", ".aac", ".mp4"}
 AUDIO_TRANSCRIPTION_MODEL = os.getenv("AUDIO_TRANSCRIPTION_MODEL", "gpt-4o-mini-transcribe")
+AUDIO_TTS_MODEL = os.getenv("AUDIO_TTS_MODEL", "gpt-4o-mini-tts")
+AUDIO_TTS_VOICE = os.getenv("AUDIO_TTS_VOICE", "alloy")
 
 BRAND_PATH_MAP = {
     "/": "alazab_construction",
@@ -395,6 +397,20 @@ class ChatResponse(BaseModel):
     timestamp:  str
     attachment: Optional[dict[str, Any]] = None
     transcript: Optional[str] = None
+
+
+class TTSRequest(BaseModel):
+    text: str
+    voice: Optional[str] = None
+    model: Optional[str] = None
+
+    @field_validator("text")
+    @classmethod
+    def text_not_empty(cls, v: str) -> str:
+        value = v.strip()
+        if not value:
+            raise ValueError("text مطلوب")
+        return value[:4000]
 
 
 # ══════════════════════════════════════════════════════════════
@@ -733,6 +749,20 @@ async def chat_audio(
         timestamp=datetime.now(timezone.utc).isoformat(),
         attachment=public_attachment,
         transcript=transcript,
+    )
+
+
+@app.post("/chat/tts", tags=["Chat"])
+async def chat_tts(payload: TTSRequest):
+    """تحويل رد البوت النصي إلى ملف صوتي MP3 من الخادم."""
+    audio = await _text_to_speech(payload.text, payload.voice, payload.model)
+    return Response(
+        content=audio,
+        media_type="audio/mpeg",
+        headers={
+            "Cache-Control": "no-store",
+            "Content-Disposition": 'inline; filename="azabot-reply.mp3"',
+        },
     )
 
 
@@ -1399,6 +1429,40 @@ async def _transcribe_audio(audio_path: str) -> Optional[str]:
     except Exception as exc:
         logger.error("Audio transcription failed: %s", exc)
         return None
+
+
+async def _text_to_speech(text: str, voice: Optional[str], model: Optional[str]) -> bytes:
+    api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    organization = os.getenv("OPENAI_ORG_ID", "").strip() or None
+    project = os.getenv("OPENAI_PROJECT_ID", "").strip() or None
+    if not api_key or api_key.startswith("replace-with-"):
+        raise HTTPException(status_code=503, detail="OPENAI_API_KEY is not configured")
+
+    selected_voice = (voice or AUDIO_TTS_VOICE).strip() or AUDIO_TTS_VOICE
+    selected_model = (model or AUDIO_TTS_MODEL).strip() or AUDIO_TTS_MODEL
+
+    try:
+        client = AsyncOpenAI(
+            api_key=api_key,
+            organization=organization,
+            project=project,
+        )
+        speech = await client.audio.speech.create(
+            model=selected_model,
+            voice=selected_voice,
+            input=text.strip()[:4000],
+            response_format="mp3",
+        )
+        if hasattr(speech, "aread"):
+            return await speech.aread()
+        if hasattr(speech, "content"):
+            return speech.content
+        return speech.read()
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Text-to-speech failed: %s", exc)
+        raise HTTPException(status_code=502, detail="فشل تحويل النص إلى صوت")
 
 
 def _sanitize_filename(filename: str) -> str:

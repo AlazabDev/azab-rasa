@@ -14,6 +14,7 @@ export const CONFIG = {
     chat: `${API_ORIGIN}/chat`,
     upload: `${API_ORIGIN}/chat/upload`,
     audio: `${API_ORIGIN}/chat/audio`,
+    tts: `${API_ORIGIN}/chat/tts`,
   },
 
   chat: {
