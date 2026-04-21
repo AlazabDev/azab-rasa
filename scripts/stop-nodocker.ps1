@@ -19,5 +19,17 @@ foreach ($name in @("webhook", "rasa", "actions")) {
     }
 }
 
+$ports = @(8000, 5005, 5055)
+foreach ($port in $ports) {
+    $listeners = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
+    foreach ($listener in $listeners) {
+        $proc = Get-Process -Id $listener.OwningProcess -ErrorAction SilentlyContinue
+        if ($proc) {
+            Write-Host "Stopping stale listener on port $port ($($listener.OwningProcess), $($proc.ProcessName))..." -ForegroundColor Cyan
+            Stop-Process -Id $listener.OwningProcess -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
 Remove-Item $pidFile -Force -ErrorAction SilentlyContinue
 Write-Host "Python-only runtime stopped." -ForegroundColor Green

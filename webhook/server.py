@@ -39,10 +39,12 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import json
 import logging
 import os
 import re
 import time
+import uuid
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -62,7 +64,7 @@ from fastapi import (
     UploadFile,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, PlainTextResponse
+from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from openai import AsyncOpenAI
 from pydantic import BaseModel, field_validator
@@ -88,9 +90,15 @@ app = FastAPI(
 )
 
 BASE_DIR = Path(__file__).resolve().parent
+ROOT_DIR = BASE_DIR.parent
 STATIC_DIR = BASE_DIR / "static"
 UPLOADS_DIR = STATIC_DIR / "uploads"
+FRONTEND_DIST_DIR = ROOT_DIR / "azabot-prod" / "dist"
+FRONTEND_ASSETS_DIR = FRONTEND_DIST_DIR / "assets"
+FRONTEND_EMBED_DIR = ROOT_DIR / "azabot-prod" / "embed"
+ADMIN_DATA_FILE = ROOT_DIR / ".runtime" / "admin-data.json"
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+ADMIN_DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
 
 PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "https://bot.alazab.com").rstrip("/")
 MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_BYTES", str(12 * 1024 * 1024)))
@@ -164,11 +172,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
+if FRONTEND_ASSETS_DIR.exists():
+    app.mount("/assets", StaticFiles(directory=str(FRONTEND_ASSETS_DIR)), name="frontend-assets")
+if FRONTEND_EMBED_DIR.exists():
+    app.mount("/embed", StaticFiles(directory=str(FRONTEND_EMBED_DIR)), name="frontend-embed")
 
 # ══════════════════════════════════════════════════════════════
 #  Config
 # ══════════════════════════════════════════════════════════════
 RASA_URL       = os.getenv("RASA_URL",             "http://rasa:5005")
+RASA_REQUEST_TIMEOUT = float(os.getenv("RASA_REQUEST_TIMEOUT", "45"))
 
 # Meta (WhatsApp + Messenger)
 META_VERIFY    = os.getenv("FB_VERIFY_TOKEN",      "alazab_verify_2025")
@@ -195,14 +208,150 @@ WEBHOOK_NOTIFY = os.getenv("WEBHOOK_NOTIFY_URL",   "")
 _stats: dict[str, int] = defaultdict(int)
 _start_time = time.time()
 
+DEFAULT_ADMIN_DATA: dict[str, Any] = {
+    "settings": {
+        "bot_name": "AzaBot",
+        "primary_color": "#d6a318",
+        "position": "left",
+        "welcome_message": "مرحباً! كيف يمكنني مساعدتك؟",
+        "quick_replies": [
+            "ما هي خدمات الشركة؟",
+            "أريد عرض سعر تشطيب",
+            "ما هي أسعار التشطيب؟",
+            "كيف أتواصل معكم؟",
+        ],
+        "ai_model": "rasa-pro",
+        "system_prompt": "Rasa Pro هو مصدر الردود الأساسي في هذا المشروع.",
+        "voice_enabled": True,
+        "auto_speak": False,
+        "voice_name": "ar-SA",
+        "business_hours_enabled": False,
+        "business_hours": {"start": "09:00", "end": "18:00"},
+        "offline_message": "وصلت رسالتك خارج ساعات العمل وسنرد عليك في أقرب وقت.",
+    },
+    "integrations": [],
+    "logs": [],
+    "conversations": [],
+}
+
 
 def _count(channel: str) -> None:
     _stats[channel] += 1
 
 
+def _load_admin_data() -> dict[str, Any]:
+    if not ADMIN_DATA_FILE.exists():
+        return json.loads(json.dumps(DEFAULT_ADMIN_DATA))
+    try:
+        data = json.loads(ADMIN_DATA_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        logger.exception("Failed to read admin data file")
+        return json.loads(json.dumps(DEFAULT_ADMIN_DATA))
+    merged = json.loads(json.dumps(DEFAULT_ADMIN_DATA))
+    for key, value in data.items():
+        merged[key] = value
+    return merged
+
+
+def _save_admin_data(data: dict[str, Any]) -> None:
+    ADMIN_DATA_FILE.write_text(
+        json.dumps(data, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+
+async def _record_conversation(
+    sender_id: str,
+    user_text: str,
+    responses: list[dict[str, Any]],
+    *,
+    channel: str,
+    brand: Optional[str],
+) -> None:
+    data = _load_admin_data()
+    conversations = data.setdefault("conversations", [])
+    now = datetime.now(timezone.utc).isoformat()
+    conv = next((item for item in conversations if item.get("session_id") == sender_id), None)
+    is_new_conversation = conv is None
+    if not conv:
+        conv = {
+            "id": str(uuid.uuid4()),
+            "session_id": sender_id,
+            "brand": brand,
+            "channel": channel,
+            "created_at": now,
+            "last_message_at": now,
+            "messages": [],
+        }
+        conversations.insert(0, conv)
+
+    conv["last_message_at"] = now
+    conv["brand"] = brand or conv.get("brand")
+    conv["channel"] = channel or conv.get("channel")
+    user_message = {
+        "id": str(uuid.uuid4()),
+        "role": "user",
+        "content": user_text,
+        "created_at": now,
+    }
+    conv.setdefault("messages", []).append(user_message)
+    assistant_messages: list[dict[str, Any]] = []
+    for response in responses:
+        text = response.get("text") if isinstance(response, dict) else None
+        if text:
+            assistant_message = {
+                "id": str(uuid.uuid4()),
+                "role": "assistant",
+                "content": text,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+            assistant_messages.append(assistant_message)
+            conv["messages"].append(assistant_message)
+
+    conv["message_count"] = len(conv.get("messages", []))
+    data["conversations"] = conversations[:500]
+    _save_admin_data(data)
+    if is_new_conversation:
+        await _dispatch_integrations(
+            "conversation.started",
+            {
+                "conversation": _integration_conversation_payload(conv),
+                "message": user_message,
+                "responses": assistant_messages,
+            },
+        )
+    await _dispatch_integrations(
+        "message.created",
+        {
+            "conversation": _integration_conversation_payload(conv),
+            "message": user_message,
+            "responses": assistant_messages,
+        },
+    )
+
+
+def _admin_stats_payload() -> dict[str, Any]:
+    data = _load_admin_data()
+    conversations = data.get("conversations", [])
+    messages = sum(len(item.get("messages", [])) for item in conversations)
+    today_prefix = datetime.now(timezone.utc).date().isoformat()
+    return {
+        "conversations": len(conversations),
+        "messages": messages,
+        "today": sum(
+            1 for item in conversations
+            if str(item.get("created_at", "")).startswith(today_prefix)
+        ),
+        "message_counts": dict(_stats),
+        "total": sum(_stats.values()),
+        "uptime_seconds": round(time.time() - _start_time),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+
 def _require_admin(request: Request) -> None:
     if not ADMIN_API_KEY:
-        return
+        raise HTTPException(status_code=503, detail="ADMIN_API_KEY is not configured")
 
     token = request.headers.get("X-Admin-Token") or ""
     if hmac.compare_digest(token, ADMIN_API_KEY):
@@ -279,12 +428,111 @@ async def health():
 @app.get("/admin/stats", tags=["System"])
 async def admin_stats(_: None = Depends(_require_admin)):
     """إحصائيات الرسائل لكل قناة منذ آخر تشغيل."""
-    return {
-        "message_counts": dict(_stats),
-        "total":          sum(_stats.values()),
-        "uptime_seconds": round(time.time() - _start_time),
-        "timestamp":      datetime.now(timezone.utc).isoformat(),
-    }
+    return _admin_stats_payload()
+
+
+@app.api_route("/admin/api", methods=["GET", "POST"], tags=["System"])
+async def admin_api(request: Request, action: str, _: None = Depends(_require_admin)):
+    data = _load_admin_data()
+    body: dict[str, Any] = {}
+    if request.method != "GET":
+        try:
+            parsed_body = await request.json()
+            if isinstance(parsed_body, dict):
+                body = parsed_body
+        except Exception:
+            body = {}
+
+    if action == "stats":
+        return _admin_stats_payload()
+
+    if action == "get_settings":
+        return data["settings"]
+
+    if action == "update_settings":
+        data["settings"] = {**data.get("settings", {}), **body}
+        _save_admin_data(data)
+        return data["settings"]
+
+    if action == "list_conversations":
+        q = (request.query_params.get("q") or "").strip().lower()
+        conversations = data.get("conversations", [])
+        if q:
+            conversations = [
+                item for item in conversations
+                if q in str(item.get("session_id", "")).lower()
+                or q in str(item.get("brand", "")).lower()
+                or q in str(item.get("channel", "")).lower()
+            ]
+        return [
+            {
+                "id": item.get("id"),
+                "session_id": item.get("session_id"),
+                "brand": item.get("brand"),
+                "channel": item.get("channel"),
+                "message_count": len(item.get("messages", [])),
+                "last_message_at": item.get("last_message_at") or item.get("created_at"),
+            }
+            for item in conversations
+        ]
+
+    if action == "get_conversation":
+        conv_id = request.query_params.get("id")
+        conv = next((item for item in data.get("conversations", []) if item.get("id") == conv_id), None)
+        if not conv:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        return {**conv, "messages": conv.get("messages", [])}
+
+    if action == "delete_conversation":
+        conv_id = body.get("id")
+        data["conversations"] = [
+            item for item in data.get("conversations", [])
+            if item.get("id") != conv_id
+        ]
+        _save_admin_data(data)
+        return {"ok": True}
+
+    if action == "list_integrations":
+        return data.get("integrations", [])
+
+    if action == "save_integration":
+        integrations = data.setdefault("integrations", [])
+        item = dict(body)
+        if not item.get("id"):
+            item["id"] = str(uuid.uuid4())
+            item["created_at"] = datetime.now(timezone.utc).isoformat()
+            integrations.insert(0, item)
+        else:
+            integrations[:] = [
+                {**old, **item} if old.get("id") == item["id"] else old
+                for old in integrations
+            ]
+        _save_admin_data(data)
+        return item
+
+    if action == "delete_integration":
+        integration_id = body.get("id")
+        data["integrations"] = [
+            item for item in data.get("integrations", [])
+            if item.get("id") != integration_id
+        ]
+        _save_admin_data(data)
+        return {"ok": True}
+
+    if action == "test_integration":
+        integration_id = body.get("id")
+        integration = next(
+            (item for item in data.get("integrations", []) if item.get("id") == integration_id),
+            None,
+        )
+        if not integration:
+            raise HTTPException(status_code=404, detail="Integration not found")
+        return await _test_integration(integration, data)
+
+    if action == "list_logs":
+        return data.get("logs", [])[:200]
+
+    raise HTTPException(status_code=400, detail=f"Unsupported admin action: {action}")
 
 
 @app.get("/brands", tags=["Brands"])
@@ -312,16 +560,13 @@ async def get_brands():
 
 @app.get("/", response_class=HTMLResponse, tags=["Widget"])
 async def brand_home():
-    return _brand_page("alazab_construction")
+    return _frontend_response()
 
 
 @app.get("/{brand_slug}", response_class=HTMLResponse, tags=["Widget"])
 @app.get("/{brand_slug}/", response_class=HTMLResponse, include_in_schema=False)
 async def brand_path(brand_slug: str):
-    brand = BRAND_PATH_MAP.get(f"/{brand_slug.strip('/')}")
-    if not brand:
-        raise HTTPException(status_code=404, detail="Not found")
-    return _brand_page(brand)
+    return _frontend_response(brand_slug)
 
 
 # ══════════════════════════════════════════════════════════════
@@ -349,6 +594,13 @@ async def chat(request: Request, payload: ChatRequest):
                 "وسأتابع معك خطوة بخطوة."
             )
         }]
+    await _record_conversation(
+        payload.sender_id,
+        payload.message,
+        responses,
+        channel=channel,
+        brand=brand,
+    )
     return ChatResponse(
         responses=responses,
         sender_id=payload.sender_id,
@@ -364,6 +616,7 @@ async def chat_upload(
     request: Request,
     sender_id: str = Form(...),
     file: UploadFile = File(...),
+    message: Optional[str] = Form(default=None),
     brand: Optional[str] = Form(default=None),
     channel: str = Form(default="website"),
     site_host: Optional[str] = Form(default=None),
@@ -383,7 +636,7 @@ async def chat_upload(
 
     responses = await _rasa_send(
         sender_id.strip(),
-        _build_file_prompt(public_attachment, resolved_brand, resolved_site_host),
+        _build_file_prompt(public_attachment, resolved_brand, resolved_site_host, message),
         resolved_brand,
         extra_metadata={
             "channel": channel,
@@ -399,6 +652,13 @@ async def chat_upload(
                 "أو أضف أي تفاصيل إضافية مرتبطة به."
             )
         }]
+    await _record_conversation(
+        sender_id.strip(),
+        message.strip() if message and message.strip() else f"رفع ملف: {file.filename}",
+        responses,
+        channel=channel,
+        brand=resolved_brand,
+    )
     return ChatResponse(
         responses=responses,
         sender_id=sender_id.strip(),
@@ -459,6 +719,13 @@ async def chat_audio(
             )
         }]
 
+    await _record_conversation(
+        sender_id.strip(),
+        transcript or f"رسالة صوتية: {file.filename}",
+        responses,
+        channel=channel,
+        brand=resolved_brand,
+    )
     return ChatResponse(
         responses=responses,
         sender_id=sender_id.strip(),
@@ -582,12 +849,24 @@ async def telegram_messages(request: Request, background_tasks: BackgroundTasks)
     return {"status": "ok"}
 
 
+@app.get("/{full_path:path}", response_class=HTMLResponse, include_in_schema=False)
+async def spa_fallback(full_path: str):
+    return _frontend_response(full_path)
+
+
 # ══════════════════════════════════════════════════════════════
 #  HANDLERS
 # ══════════════════════════════════════════════════════════════
 async def _handle_whatsapp(wa_id: str, text: str) -> None:
     try:
         responses = await _rasa_send(f"wa_{wa_id}", text)
+        await _record_conversation(
+            f"wa_{wa_id}",
+            text,
+            responses,
+            channel="whatsapp",
+            brand=None,
+        )
         for resp in responses:
             reply = resp.get("text", "")
             if reply:
@@ -600,6 +879,13 @@ async def _handle_whatsapp(wa_id: str, text: str) -> None:
 async def _handle_messenger(sender_id: str, text: str) -> None:
     try:
         responses = await _rasa_send(f"fb_{sender_id}", text)
+        await _record_conversation(
+            f"fb_{sender_id}",
+            text,
+            responses,
+            channel="messenger",
+            brand=None,
+        )
         for resp in responses:
             reply = resp.get("text", "")
             if reply:
@@ -611,6 +897,13 @@ async def _handle_messenger(sender_id: str, text: str) -> None:
 async def _handle_telegram(chat_id: int, text: str) -> None:
     try:
         responses = await _rasa_send(f"tg_{chat_id}", text)
+        await _record_conversation(
+            f"tg_{chat_id}",
+            text,
+            responses,
+            channel="telegram",
+            brand=None,
+        )
         for resp in responses:
             reply = resp.get("text", "")
             if reply:
@@ -678,7 +971,7 @@ async def _rasa_send(
         payload["metadata"] = metadata
 
     try:
-        async with httpx.AsyncClient(timeout=12) as client:
+        async with httpx.AsyncClient(timeout=RASA_REQUEST_TIMEOUT) as client:
             r = await client.post(
                 f"{RASA_URL}/webhooks/rest/webhook",
                 json=payload,
@@ -696,6 +989,197 @@ async def _rasa_send(
 # ══════════════════════════════════════════════════════════════
 #  SENDERS
 # ══════════════════════════════════════════════════════════════
+def _integration_conversation_payload(conversation: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": conversation.get("id"),
+        "session_id": conversation.get("session_id"),
+        "brand": conversation.get("brand"),
+        "channel": conversation.get("channel"),
+        "created_at": conversation.get("created_at"),
+        "last_message_at": conversation.get("last_message_at"),
+        "message_count": conversation.get("message_count", len(conversation.get("messages", []))),
+    }
+
+
+def _format_integration_message(event: str, payload: dict[str, Any]) -> str:
+    conversation = payload.get("conversation", {}) if isinstance(payload.get("conversation"), dict) else {}
+    message = payload.get("message", {}) if isinstance(payload.get("message"), dict) else {}
+    responses = payload.get("responses", []) if isinstance(payload.get("responses"), list) else []
+    response_text = "\n".join(
+        str(item.get("content", "")).strip()
+        for item in responses
+        if isinstance(item, dict) and str(item.get("content", "")).strip()
+    )
+    lines = [
+        f"AzaBot event: {event}",
+        f"Channel: {conversation.get('channel') or '-'}",
+        f"Brand: {conversation.get('brand') or '-'}",
+        f"Session: {conversation.get('session_id') or '-'}",
+        "",
+        f"User: {message.get('content') or '-'}",
+    ]
+    if response_text:
+        lines.extend(["", f"Bot: {response_text}"])
+    return "\n".join(lines).strip()
+
+
+async def _deliver_integration_event(
+    integration: dict[str, Any],
+    event: str,
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    config = integration.get("config", {}) if isinstance(integration.get("config"), dict) else {}
+    request_payload = {
+        "event": event,
+        "integration": {
+            "id": integration.get("id"),
+            "type": integration.get("type"),
+            "name": integration.get("name"),
+        },
+        "data": payload,
+        "sent_at": datetime.now(timezone.utc).isoformat(),
+    }
+    log_item = {
+        "id": str(uuid.uuid4()),
+        "integration_id": integration.get("id"),
+        "integration_type": integration.get("type"),
+        "event": event,
+        "request_payload": request_payload,
+        "status": "success",
+        "status_code": None,
+        "response_body": "",
+        "error_message": "",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    try:
+        integration_type = integration.get("type")
+        if integration_type == "webhook":
+            url = str(config.get("url") or "").strip()
+            if not url:
+                raise ValueError("Webhook URL is required")
+            headers = {"Content-Type": "application/json"}
+            secret = str(config.get("secret") or "").strip()
+            if secret:
+                headers["X-AzaBot-Secret"] = secret
+            async with httpx.AsyncClient(timeout=10) as client:
+                response = await client.post(url, json=request_payload, headers=headers)
+
+        elif integration_type == "telegram":
+            bot_token = str(config.get("bot_token") or "").strip()
+            chat_id = str(config.get("chat_id") or "").strip()
+            if not bot_token or not chat_id:
+                raise ValueError("Telegram bot_token and chat_id are required")
+            async with httpx.AsyncClient(timeout=10) as client:
+                response = await client.post(
+                    f"https://api.telegram.org/bot{bot_token}/sendMessage",
+                    json={"chat_id": chat_id, "text": _format_integration_message(event, payload)},
+                )
+
+        elif integration_type == "whatsapp":
+            phone_number_id = str(config.get("phone_number_id") or "").strip()
+            access_token = str(config.get("access_token") or "").strip()
+            recipient = str(config.get("recipient") or "").strip()
+            if not phone_number_id or not access_token or not recipient:
+                raise ValueError("WhatsApp phone_number_id, access_token and recipient are required")
+            async with httpx.AsyncClient(timeout=10) as client:
+                response = await client.post(
+                    f"https://graph.facebook.com/v20.0/{phone_number_id}/messages",
+                    headers={"Authorization": f"Bearer {access_token}"},
+                    json={
+                        "messaging_product": "whatsapp",
+                        "to": recipient,
+                        "type": "text",
+                        "text": {"body": _format_integration_message(event, payload)[:4000]},
+                    },
+                )
+
+        elif integration_type == "twilio":
+            account_sid = str(config.get("account_sid") or "").strip()
+            auth_token = str(config.get("auth_token") or "").strip()
+            from_number = str(config.get("from") or "").strip()
+            to_number = str(config.get("to") or "").strip()
+            if not account_sid or not auth_token or not from_number or not to_number:
+                raise ValueError("Twilio account_sid, auth_token, from and to are required")
+            async with httpx.AsyncClient(timeout=10) as client:
+                response = await client.post(
+                    f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Messages.json",
+                    data={
+                        "From": from_number,
+                        "To": to_number,
+                        "Body": _format_integration_message(event, payload)[:1500],
+                    },
+                    auth=(account_sid, auth_token),
+                )
+
+        else:
+            raise ValueError(f"Unsupported integration type: {integration_type}")
+
+        log_item["status_code"] = response.status_code
+        log_item["response_body"] = response.text[:2000]
+        if response.status_code >= 400:
+            log_item["status"] = "failed"
+            log_item["error_message"] = response.text[:500]
+
+    except Exception as exc:
+        log_item["status"] = "failed"
+        log_item["error_message"] = str(exc)
+
+    return log_item
+
+
+async def _dispatch_integrations(event: str, payload: dict[str, Any]) -> None:
+    data = _load_admin_data()
+    integrations = [
+        item for item in data.get("integrations", [])
+        if item.get("enabled") and event in (item.get("events") or [])
+    ]
+    if not integrations:
+        return
+
+    logs = data.setdefault("logs", [])
+    for integration in integrations:
+        log_item = await _deliver_integration_event(integration, event, payload)
+        logs.insert(0, log_item)
+    data["logs"] = logs[:200]
+    _save_admin_data(data)
+
+
+async def _test_integration(integration: dict[str, Any], data: dict[str, Any]) -> dict[str, Any]:
+    event = "integration.test"
+    payload = {
+        "conversation": {
+            "id": "test",
+            "session_id": "integration-test",
+            "brand": "test",
+            "channel": "admin",
+            "message_count": 1,
+        },
+        "message": {
+            "id": "test-message",
+            "role": "user",
+            "content": "اختبار تكامل AzaBot",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        },
+        "responses": [{
+            "id": "test-response",
+            "role": "assistant",
+            "content": "هذه رسالة اختبار من لوحة تحكم AzaBot.",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }],
+    }
+    log_item = await _deliver_integration_event(integration, event, payload)
+    logs = data.setdefault("logs", [])
+    logs.insert(0, log_item)
+    data["logs"] = logs[:200]
+    _save_admin_data(data)
+    return {
+        "status": "success" if log_item["status"] == "success" else "failed",
+        "statusCode": log_item.get("status_code"),
+        "errorMessage": log_item.get("error_message"),
+    }
+
+
 async def _send_whatsapp(to: str, text: str) -> bool:
     if not (WA_URL and WA_TOKEN):
         return False
@@ -828,56 +1312,21 @@ def _resolve_brand(
     return os.getenv("DEFAULT_BRAND", "alazab_construction")
 
 
-def _brand_page(brand: str) -> HTMLResponse:
-    profile = BRAND_PROFILES[brand]
-    slug = profile["slug"]
-    canonical_path = f"/{slug}" if slug else "/"
-    title = profile["title"]
-    subtitle = profile["subtitle"]
-    name = profile["name"]
-    html = f"""<!doctype html>
-<html lang="ar" dir="rtl">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{title} | Alazab Bot</title>
-  <link rel="canonical" href="{PUBLIC_BASE_URL}{canonical_path}">
-  <style>
-    body {{
-      margin: 0;
-      min-height: 100vh;
-      display: grid;
-      place-items: center;
-      background: #f6f7fb;
-      color: #12203a;
-      font-family: Cairo, system-ui, sans-serif;
-    }}
-    main {{
-      width: min(720px, calc(100vw - 32px));
-      text-align: center;
-      padding: 48px 16px;
-    }}
-    h1 {{ margin: 0 0 12px; font-size: clamp(32px, 5vw, 56px); }}
-    p {{ margin: 0; color: #667085; font-size: 18px; line-height: 1.8; }}
-  </style>
-</head>
-<body>
-  <main>
-    <h1>{title}</h1>
-    <p>{subtitle} - {name}</p>
-  </main>
-  <script>
-    window.AzaBotConfig = {{
-      apiOrigin: location.origin,
-      brand: "{brand}",
-      siteHost: "bot.alazab.com",
-      sitePath: "{canonical_path}"
-    }};
-  </script>
-  <script src="/widget/widget.js" defer></script>
-</body>
-</html>"""
-    return HTMLResponse(html)
+def _frontend_response(path: str = "") -> FileResponse:
+    """Serve the built AzaBot React app and its top-level static assets."""
+    safe_path = path.strip().lstrip("/")
+    if safe_path and "/" not in safe_path:
+        static_file = FRONTEND_DIST_DIR / safe_path
+        if static_file.is_file():
+            return FileResponse(static_file)
+
+    index_file = FRONTEND_DIST_DIR / "index.html"
+    if not index_file.is_file():
+        raise HTTPException(
+            status_code=503,
+            detail="Frontend build is missing. Run `pnpm install` and `pnpm build` inside azabot-prod.",
+        )
+    return FileResponse(index_file)
 
 
 async def _save_upload(
@@ -961,7 +1410,9 @@ def _build_file_prompt(
     attachment: dict[str, Any],
     brand: Optional[str],
     site_host: Optional[str],
+    message: Optional[str] = None,
 ) -> str:
+    user_note = f"رسالة المستخدم المصاحبة: {message.strip()}\n" if message and message.strip() else ""
     return (
         "قام المستخدم برفع ملف جديد داخل محادثة الموقع.\n"
         f"البراند: {brand or 'غير محدد'}\n"
@@ -969,6 +1420,7 @@ def _build_file_prompt(
         f"اسم الملف: {attachment['name']}\n"
         f"نوع الملف: {attachment['content_type']}\n"
         f"رابط الملف: {attachment['url']}\n"
+        f"{user_note}"
         "اشكر المستخدم وأخبره أن الملف وصل بنجاح، ثم اطلب منه أي تفاصيل إضافية يحتاجها."
     )
 

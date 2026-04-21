@@ -46,7 +46,7 @@ try {
         site_host = "bot.alazab.com"
         site_path = "/"
     } | ConvertTo-Json -Compress
-    $chat = Invoke-RestMethod -Uri "http://127.0.0.1:8000/chat" -Method Post -ContentType "application/json; charset=utf-8" -Body $chatBody -TimeoutSec 20
+    $chat = Invoke-RestMethod -Uri "http://127.0.0.1:8000/chat" -Method Post -ContentType "application/json; charset=utf-8" -Body $chatBody -TimeoutSec 60
     if ($chat.responses) {
         Write-Host "[OK]   Chat endpoint returned responses" -ForegroundColor Green
     } else {

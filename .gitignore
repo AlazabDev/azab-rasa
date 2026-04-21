@@ -11,8 +11,8 @@ models/
 .venv/
 venv/
 *.egg-info/
-dist/
-build/
+/dist/
+/build/
 
 # Rasa
 results/
