@@ -17,6 +17,8 @@ build/
 # Rasa
 results/
 graph.html
+.runtime/
+logs/
 
 # Docker
 .docker/

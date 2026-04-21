@@ -31,31 +31,18 @@ rules:
       - intent: out_of_scope
       - action: utter_out_of_scope
 
-  # ── Lead Form ──────────────────────────────────────
-  - rule: بدء نموذج التواصل
+  # ── Quote requests handled without legacy forms ────────────
+  - rule: طلب عرض سعر Alazab
     steps:
       - intent: ask_alazab_quote
-      - action: collect_lead_form
-      - active_loop: collect_lead_form
+      - action: utter_alazab_quote
 
-  - rule: بدء نموذج التواصل - Luxury
+  - rule: طلب عرض سعر Luxury
     steps:
       - intent: ask_luxury_quote
-      - action: collect_lead_form
-      - active_loop: collect_lead_form
+      - action: utter_luxury_quote
 
-  - rule: بدء نموذج التواصل - Brand
+  - rule: طلب عرض سعر Brand
     steps:
       - intent: ask_brand_quote
-      - action: collect_lead_form
-      - active_loop: collect_lead_form
-
-  - rule: إتمام نموذج التواصل
-    condition:
-      - active_loop: collect_lead_form
-    steps:
-      - action: collect_lead_form
-      - active_loop: null
-      - slot_was_set:
-          - requested_slot: null
-      - action: action_submit_lead
+      - action: utter_brand_quote

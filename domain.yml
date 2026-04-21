@@ -7,6 +7,45 @@ version: "3.1"
 # ============================================================
 
 # ══════════════════════════════════════════════════════════════
+#  Intents — كل intents المستخدمة في ملفات data/
+# ══════════════════════════════════════════════════════════════
+intents:
+  - affirm
+  - ask_alazab_about
+  - ask_alazab_contact
+  - ask_alazab_projects
+  - ask_alazab_quote
+  - ask_alazab_services
+  - ask_brand_industries
+  - ask_brand_portfolio
+  - ask_brand_process
+  - ask_brand_quote
+  - ask_brand_services
+  - ask_help
+  - ask_laban_bulk_order
+  - ask_laban_catalog
+  - ask_laban_contact
+  - ask_laban_delivery
+  - ask_laban_products
+  - ask_luxury_materials
+  - ask_luxury_portfolio
+  - ask_luxury_quote
+  - ask_luxury_services
+  - ask_luxury_timeline
+  - ask_uberfix_emergency
+  - ask_uberfix_request
+  - ask_uberfix_services
+  - ask_uberfix_subscription
+  - ask_uberfix_tracking
+  - bot_challenge
+  - deny
+  - goodbye
+  - greet
+  - out_of_scope
+  - session_start
+  - thanks
+
+# ══════════════════════════════════════════════════════════════
 #  Slots — كل الـ slots المستخدمة في الـ flows
 # ══════════════════════════════════════════════════════════════
 slots:
@@ -99,6 +138,11 @@ responses:
     - text: "اكتب رسالتك أو طلبك باختصار:"
 
   # ── Hello / Welcome ────────────────────────────────────────
+  utter_greet:
+    - text: "أهلاً بك في مجموعة العزب. كيف أقدر أساعدك اليوم؟"
+      metadata:
+        rephrase: true
+
   utter_hello:
     - text: "أهلاً وسهلاً! كيف يمكنني مساعدتك اليوم؟ 😊"
       metadata:
@@ -153,10 +197,27 @@ responses:
       metadata:
         rephrase: true
 
+  utter_ask_help:
+    - text: |
+        أقدر أساعدك في خدمات مجموعة العزب: مقاولات، تشطيبات، هوية تجارية، صيانة، وتوريدات.
+        اكتب الخدمة المطلوبة أو اطلب عرض سعر وسأجمع البيانات اللازمة.
+      metadata:
+        rephrase: true
+
+  utter_bot_challenge:
+    - text: "أنا مساعد مجموعة العزب الذكي، أساعدك في الاستفسارات وطلبات التواصل."
+      metadata:
+        rephrase: true
+
   # ── Goodbye / Feedback ────────────────────────────────────
   utter_goodbye:
     - text: "شكرًا لتواصلك مع مجموعة العزب. نتطلع لخدمتك دائمًا! 🤝"
     - text: "وداعًا! لا تتردد في التواصل معنا في أي وقت. 😊"
+
+  utter_thanks:
+    - text: "العفو، تحت أمرك في أي وقت."
+      metadata:
+        rephrase: true
 
   utter_thankyou_positive:
     - text: "سعيد بذلك! شكرًا على تقييمك الإيجابي. 🎉"
@@ -184,6 +245,11 @@ responses:
   # ── Cannot Handle ─────────────────────────────────────────
   utter_no_relevant_answer_found:
     - text: "عذراً، لم أجد إجابة مناسبة. هل تريد التحدث مع أحد موظفينا؟"
+      metadata:
+        rephrase: true
+
+  utter_out_of_scope:
+    - text: "السؤال خارج نطاق خدمات مجموعة العزب. أقدر أساعدك في المقاولات، التشطيبات، الهوية التجارية، الصيانة أو التوريدات."
       metadata:
         rephrase: true
 
@@ -239,18 +305,144 @@ responses:
       metadata:
         rephrase: true
 
+  utter_alazab_contact:
+    - text: |
+        يمكنك التواصل مع فريق Alazab Construction مباشرة عبر رقم المبيعات أو إرسال بياناتك هنا وسيتواصل معك الفريق.
+        اكتب اسمك ورقم هاتفك ونوع المشروع المطلوب.
+      metadata:
+        rephrase: true
+
+  utter_alazab_about:
+    - text: |
+        Alazab Construction متخصصة في تنفيذ وإدارة المشروعات السكنية والتجارية مع إشراف هندسي ومتابعة حتى التسليم.
+      metadata:
+        rephrase: true
+
+  utter_alazab_projects:
+    - text: |
+        يمكن لفريق Alazab Construction عرض نماذج مشاريع مناسبة حسب نوع المشروع والمساحة والمدينة.
+        اكتب نوع المشروع المطلوب وسنوجهك للخطوة التالية.
+      metadata:
+        rephrase: true
+
+  utter_alazab_quote:
+    - text: |
+        للحصول على عرض سعر من Alazab Construction، ارسل اسمك ورقم هاتفك ونوع المشروع والمساحة التقريبية.
+      metadata:
+        rephrase: true
+
+  utter_luxury_materials:
+    - text: |
+        Luxury Finishing تستخدم خامات مناسبة لمستوى التشطيب المطلوب مثل الرخام، البورسلين، الأخشاب، الدهانات والاضاءة.
+        ارسل مستوى التشطيب والمساحة لنرشح خيارات أقرب.
+      metadata:
+        rephrase: true
+
+  utter_luxury_portfolio:
+    - text: |
+        يمكننا عرض نماذج من أعمال Luxury Finishing حسب نوع الوحدة والمساحة ومستوى التشطيب المطلوب.
+        ارسل نوع المشروع وسنرشح لك نماذج مناسبة.
+      metadata:
+        rephrase: true
+
+  utter_luxury_quote:
+    - text: |
+        للحصول على عرض سعر تشطيب، ارسل المساحة، حالة الاستلام، مستوى التشطيب المطلوب ورقم التواصل.
+      metadata:
+        rephrase: true
+
+  utter_luxury_timeline:
+    - text: |
+        مدة التشطيب تختلف حسب المساحة ومستوى التفاصيل وتوفر الخامات.
+        ارسل مساحة الوحدة وحالة الاستلام لنحدد جدولاً زمنياً أقرب للواقع.
+      metadata:
+        rephrase: true
+
+  utter_brand_portfolio:
+    - text: |
+        لدى Brand Identity أعمال في تجهيز الهويات التجارية، الواجهات، اللافتات، وتجهيز نقاط البيع.
+        ارسل نوع النشاط وسنقترح نماذج قريبة.
+      metadata:
+        rephrase: true
+
+  utter_brand_process:
+    - text: |
+        مراحل العمل تشمل: فهم النشاط، تصور الهوية، التصميم، اعتماد الخامات، التنفيذ، ثم التسليم النهائي.
+      metadata:
+        rephrase: true
+
+  utter_brand_quote:
+    - text: |
+        للحصول على عرض سعر Brand Identity، ارسل نوع النشاط، المساحة، المدينة، والخدمة المطلوبة.
+      metadata:
+        rephrase: true
+
+  utter_brand_industries:
+    - text: |
+        نخدم قطاعات مثل المطاعم، الكافيهات، الصيدليات، المحلات، المكاتب ونقاط البيع.
+      metadata:
+        rephrase: true
+
+  utter_uberfix_request:
+    - text: |
+        لتسجيل طلب صيانة UberFix، ارسل نوع العطل، العنوان أو المنطقة، ورقم التواصل.
+      metadata:
+        rephrase: true
+
+  utter_uberfix_subscription:
+    - text: |
+        UberFix توفر باقات صيانة دورية للمنازل والمنشآت حسب عدد الزيارات ونوع الخدمة المطلوبة.
+      metadata:
+        rephrase: true
+
+  utter_uberfix_emergency:
+    - text: |
+        لحالات الصيانة العاجلة، اكتب نوع العطل والمنطقة ورقم التواصل.
+        سنوجه الطلب لفريق UberFix المناسب بأسرع وقت.
+      metadata:
+        rephrase: true
+
+  utter_laban_catalog:
+    - text: |
+        يمكننا مساعدتك في كتالوج خامات Laban Alasfour حسب نوع المنتج: بناء، تشطيب، دهانات، كهرباء، سباكة أو خامات بالجملة.
+      metadata:
+        rephrase: true
+
+  utter_laban_bulk_order:
+    - text: |
+        لطلبات الجملة، ارسل نوع الخامة والكمية ومكان التسليم وسنجهز لك عرض سعر مناسب.
+      metadata:
+        rephrase: true
+
+  utter_laban_delivery:
+    - text: |
+        التوصيل متاح حسب الكمية والمنطقة. ارسل موقع التسليم والمنتجات المطلوبة لتأكيد المدة والتكلفة.
+      metadata:
+        rephrase: true
+
+  utter_laban_contact:
+    - text: |
+        للتواصل مع Laban Alasfour، ارسل اسمك ورقم هاتفك ونوع الخامات المطلوبة وسيتواصل معك فريق المبيعات.
+      metadata:
+        rephrase: true
+
 # ══════════════════════════════════════════════════════════════
 #  Actions
 # ══════════════════════════════════════════════════════════════
 actions:
   # ── Utterances ────────────────────────────────────────────
+  - utter_greet
   - utter_hello
   - utter_welcome
   - utter_goodbye
+  - utter_thanks
   - utter_help
+  - utter_ask_help
+  - utter_bot_challenge
   - utter_what_can_you_do
   - utter_top_faqs
   - utter_no_relevant_answer_found
+  - utter_out_of_scope
   - utter_ask_feedback_rating
   - utter_thankyou_positive
   - utter_thankyou_negative
@@ -267,6 +459,25 @@ actions:
   - utter_brand_services
   - utter_uberfix_services
   - utter_laban_products
+  - utter_alazab_contact
+  - utter_alazab_about
+  - utter_alazab_projects
+  - utter_alazab_quote
+  - utter_luxury_materials
+  - utter_luxury_portfolio
+  - utter_luxury_quote
+  - utter_luxury_timeline
+  - utter_brand_portfolio
+  - utter_brand_process
+  - utter_brand_quote
+  - utter_brand_industries
+  - utter_uberfix_request
+  - utter_uberfix_subscription
+  - utter_uberfix_emergency
+  - utter_laban_catalog
+  - utter_laban_bulk_order
+  - utter_laban_delivery
+  - utter_laban_contact
   # ── Custom Actions ────────────────────────────────────────
   - action_submit_lead
   - action_human_handoff

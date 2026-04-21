@@ -9,11 +9,6 @@ stories:
       - action: utter_alazab_services
       - intent: ask_alazab_quote
       - action: utter_alazab_quote
-      - action: collect_lead_form
-      - active_loop: collect_lead_form
-      - action: collect_lead_form
-      - active_loop: null
-      - action: action_submit_lead
 
   - story: سؤال عن Alazab ثم التواصل
     steps:

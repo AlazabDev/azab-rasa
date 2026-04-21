@@ -11,11 +11,6 @@ stories:
       - action: utter_brand_process
       - intent: ask_brand_quote
       - action: utter_brand_quote
-      - action: collect_lead_form
-      - active_loop: collect_lead_form
-      - action: collect_lead_form
-      - active_loop: null
-      - action: action_submit_lead
 
   - story: استعراض قطاعات Brand Identity
     steps:

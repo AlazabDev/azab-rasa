@@ -1,5 +1,5 @@
 param(
-    [string]$EnvFile = ".env.nodocker"
+    [string]$EnvFile = ".env"
 )
 
 $ErrorActionPreference = "Continue"
@@ -39,7 +39,14 @@ Check-Http "Webhook" "http://127.0.0.1:8000/health"
 Check-Http "Webhook docs" "http://127.0.0.1:8000/docs"
 
 try {
-    $chat = Invoke-RestMethod -Uri "http://127.0.0.1:8000/chat" -Method Post -ContentType "application/json" -Body '{"sender_id":"nodocker_check","message":"مرحبا","channel":"website","site_host":"bot.alazab.com","site_path":"/"}' -TimeoutSec 20
+    $chatBody = @{
+        sender_id = "nodocker_check"
+        message = "مرحبا"
+        channel = "website"
+        site_host = "bot.alazab.com"
+        site_path = "/"
+    } | ConvertTo-Json -Compress
+    $chat = Invoke-RestMethod -Uri "http://127.0.0.1:8000/chat" -Method Post -ContentType "application/json; charset=utf-8" -Body $chatBody -TimeoutSec 20
     if ($chat.responses) {
         Write-Host "[OK]   Chat endpoint returned responses" -ForegroundColor Green
     } else {

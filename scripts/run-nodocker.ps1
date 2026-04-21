@@ -1,5 +1,6 @@
 param(
-    [string]$EnvFile = ".env.nodocker",
+    [string]$EnvFile = ".env",
+    [string]$EndpointsFile = "endpoints.nodocker.yml",
     [switch]$SkipInstall,
     [switch]$SkipTrain,
     [int]$WebhookWorkers = 1
@@ -11,7 +12,7 @@ Set-Location $Root
 
 function Load-Env($Path) {
     if (-not (Test-Path $Path)) {
-        throw "Environment file not found: $Path. Copy .env.nodocker.example to .env.nodocker and fill real values."
+        throw "Environment file not found: $Path. Create .env with real local/production values."
     }
 
     Get-Content -Path $Path | ForEach-Object {
@@ -32,7 +33,23 @@ function Require-Env($Name) {
     }
 }
 
+function Invoke-Checked([string]$FilePath, [string[]]$ArgumentList) {
+    & $FilePath @ArgumentList
+    if ($LASTEXITCODE -ne 0) {
+        throw "Command failed ($LASTEXITCODE): $FilePath $($ArgumentList -join ' ')"
+    }
+}
+
 Load-Env $EnvFile
+
+# Required on Windows so Rasa/LangChain read Arabic docs as UTF-8 instead
+# of the active console code page.
+$env:PYTHONUTF8 = "1"
+$env:PYTHONIOENCODING = "utf-8"
+
+if (-not (Test-Path $EndpointsFile)) {
+    throw "Endpoints file not found: $EndpointsFile"
+}
 
 $required = @(
     "RASA_PRO_LICENSE",
@@ -58,13 +75,13 @@ $VenvPython = Join-Path $Root ".venv\Scripts\python.exe"
 $VenvRasa = Join-Path $Root ".venv\Scripts\rasa.exe"
 if (-not (Test-Path $VenvPython)) {
     Write-Host "Creating Python virtual environment..." -ForegroundColor Cyan
-    py -3.11 -m venv .venv
+    Invoke-Checked "py" @("-3.11", "-m", "venv", ".venv")
 }
 
 if (-not $SkipInstall) {
     Write-Host "Installing Python dependencies..." -ForegroundColor Cyan
-    & $VenvPython -m pip install --upgrade pip
-    & $VenvPython -m pip install -e ".[dev]"
+    Invoke-Checked $VenvPython @("-m", "pip", "install", "--upgrade", "pip")
+    Invoke-Checked $VenvPython @("-m", "pip", "install", "-e", ".[dev]")
 }
 
 if (-not (Test-Path $VenvRasa)) {
@@ -73,7 +90,7 @@ if (-not (Test-Path $VenvRasa)) {
 
 if (-not $SkipTrain) {
     Write-Host "Training Rasa model..." -ForegroundColor Cyan
-    & $VenvRasa train --force
+    Invoke-Checked $VenvRasa @("train", "--force")
 }
 
 New-Item -ItemType Directory -Path ".runtime", "logs" -Force | Out-Null
@@ -88,7 +105,7 @@ Start-Sleep -Seconds 5
 
 Write-Host "Starting Rasa server on 127.0.0.1:5005..." -ForegroundColor Cyan
 $rasa = Start-Process -FilePath $VenvRasa `
-    -ArgumentList @("run", "--enable-api", "--cors", $env:ALLOWED_ORIGINS, "--port", "5005") `
+    -ArgumentList @("run", "--enable-api", "--endpoints", $EndpointsFile, "--cors", $env:ALLOWED_ORIGINS, "--port", "5005") `
     -RedirectStandardOutput "logs\rasa.out.log" `
     -RedirectStandardError "logs\rasa.err.log" `
     -PassThru -WindowStyle Hidden
@@ -105,6 +122,7 @@ $webhook = Start-Process -FilePath $VenvPython `
 $pids = [ordered]@{
     started_at = (Get-Date).ToString("o")
     env_file = $EnvFile
+    endpoints_file = $EndpointsFile
     actions = $actions.Id
     rasa = $rasa.Id
     webhook = $webhook.Id

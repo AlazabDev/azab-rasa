@@ -9,11 +9,6 @@ stories:
       - action: utter_uberfix_services
       - intent: ask_uberfix_request
       - action: utter_uberfix_request
-      - action: collect_lead_form
-      - active_loop: collect_lead_form
-      - action: collect_lead_form
-      - active_loop: null
-      - action: action_submit_lead
 
   - story: استفسار عن اشتراك UberFix
     steps:
