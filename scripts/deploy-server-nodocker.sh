@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Production deploy script for Alazab Rasa/AzaBot without Docker.
 # Usage:
-#   bash scripts/deploy-server-nodocker.sh [--branch main] [--skip-pull] [--skip-train] [--skip-frontend] [--skip-systemd]
+#   bash scripts/deploy-server-nodocker.sh [--branch main] [--skip-pull] [--skip-train] [--skip-frontend] [--skip-db] [--skip-systemd]
 #   bash scripts/deploy-server-nodocker.sh --configure-nginx --domain bot.alazab.com
 set -Eeuo pipefail
 
@@ -14,6 +14,7 @@ WEBHOOK_WORKERS="${WEBHOOK_WORKERS:-2}"
 SKIP_PULL=false
 SKIP_TRAIN=false
 SKIP_FRONTEND=false
+SKIP_DB=false
 SKIP_SYSTEMD=false
 CONFIGURE_NGINX=false
 DOMAIN=""
@@ -31,6 +32,7 @@ Options:
   --skip-pull            Do not run git fetch/pull
   --skip-train           Do not run rasa train
   --skip-frontend        Do not run pnpm install/build in azabot-prod
+  --skip-db              Do not install/update UberFix PostgreSQL schema
   --skip-systemd         Prepare/build only, do not write/restart services
   --configure-nginx      Write an nginx reverse proxy config for the domain
   --domain DOMAIN        Domain used with --configure-nginx
@@ -53,6 +55,7 @@ while [[ $# -gt 0 ]]; do
     --skip-pull) SKIP_PULL=true; shift ;;
     --skip-train) SKIP_TRAIN=true; shift ;;
     --skip-frontend) SKIP_FRONTEND=true; shift ;;
+    --skip-db) SKIP_DB=true; shift ;;
     --skip-systemd) SKIP_SYSTEMD=true; shift ;;
     --configure-nginx) CONFIGURE_NGINX=true; shift ;;
     --domain) DOMAIN="${2:?Missing domain}"; shift 2 ;;
@@ -149,6 +152,11 @@ write_service() {
 validate_env() {
   require_env RASA_PRO_LICENSE
   require_env OPENAI_API_KEY
+  require_env DB_HOST
+  require_env DB_PORT
+  require_env DB_NAME
+  require_env DB_USER
+  require_env DB_PASSWORD
   require_env REDIS_HOST
   require_env REDIS_PORT
   require_env REDIS_PASSWORD
@@ -170,6 +178,14 @@ install_python_deps() {
   fi
   run_cmd "$APP_DIR/.venv/bin/python" -m pip install --upgrade pip wheel setuptools
   run_cmd "$APP_DIR/.venv/bin/python" -m pip install -e "$APP_DIR"
+}
+
+install_database_schema() {
+  $SKIP_DB && { warn "Skipping UberFix database schema install"; return; }
+  require_cmd psql
+  [[ -f "$APP_DIR/scripts/install-uberfix-db.sh" ]] || fail "Missing scripts/install-uberfix-db.sh"
+  local args=(--env-file "$ENV_FILE")
+  run_cmd bash "$APP_DIR/scripts/install-uberfix-db.sh" "${args[@]}"
 }
 
 install_frontend() {
@@ -305,6 +321,7 @@ main() {
 
   mkdir -p "$APP_DIR/logs" "$APP_DIR/.runtime"
   install_python_deps
+  install_database_schema
   install_frontend
   train_rasa
   write_systemd_services

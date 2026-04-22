@@ -1,97 +1,166 @@
-# Production Runbook
+# Production Runbook - No Docker
 
-This runbook prepares the Alazab Rasa stack for production deployment.
+This is the production path for the Alazab Rasa/AzaBot stack without Docker.
 
-## 1. Prepare Secrets
+## 1. Services
 
-Copy the template and fill production-only rotated secrets:
+- Rasa Actions: `127.0.0.1:5055`
+- Rasa API: `127.0.0.1:5005`
+- FastAPI Webhook + React frontend: `127.0.0.1:8000`
+- Public traffic terminates at Nginx and proxies to `127.0.0.1:8000`
+- PostgreSQL and Redis must be real external services, not Docker service names
 
-```powershell
-Copy-Item .env.production.example .env.production
-notepad .env.production
-```
+## 2. Required Environment
 
-Do not reuse development secrets for production. Required values include:
+Use the existing `.env` on the server and keep real secret values out of Git.
+
+Required production variables:
 
 - `RASA_PRO_LICENSE`
 - `OPENAI_API_KEY`
 - `ADMIN_API_KEY`
+- `DB_HOST`
+- `DB_PORT`
+- `DB_NAME`
+- `DB_USER`
 - `DB_PASSWORD`
+- `REDIS_HOST`
+- `REDIS_PORT`
 - `REDIS_PASSWORD`
-- `JWT_SECRET`
-- `ENCRYPTION_KEY`
+- `ACTION_SERVER_URL=http://127.0.0.1:5055/webhook`
+- `RASA_URL=http://127.0.0.1:5005`
+- `UBERFIX_API_KEY`
 
-## 2. Prepare SSL
+Do not use these Docker service names in production:
 
-Place real certificate files here:
-
-- `ssl/fullchain.pem`
-- `ssl/privkey.pem`
-
-The certificate must cover:
-
-- `bot.alazab.com`
-- `www.bot.alazab.com`
-
-The public brand paths are:
-
-- `bot.alazab.com/brand-identity`
-- `bot.alazab.com/laban-alasfour`
-- `bot.alazab.com/luxury-finishing`
-- `bot.alazab.com/uberfix`
-
-## 3. Run Preflight
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\production-preflight.ps1
+```text
+postgres
+redis
+rasa
+rasa-actions
 ```
 
-Fix every `[FAIL]` before deployment.
+## 3. Deploy
 
-## 4. Deploy
+From the project root on the server:
+
+```bash
+git pull --ff-only origin main
+bash scripts/deploy-server-nodocker.sh --branch main --configure-nginx --domain bot.alazab.com
+```
+
+If the schema already exists and you intentionally want to skip DB installation:
+
+```bash
+bash scripts/deploy-server-nodocker.sh --branch main --skip-db --configure-nginx --domain bot.alazab.com
+```
+
+## 4. Database Only
+
+Linux server:
+
+```bash
+bash scripts/install-uberfix-db.sh --env-file .env
+```
+
+Windows/local test:
 
 ```powershell
-docker compose --env-file .env.production -f docker-compose.prod.yaml up -d --build
+powershell -ExecutionPolicy Bypass -File .\scripts\install-uberfix-db.ps1 -EnvFile .env
 ```
+
+The database script creates or updates:
+
+- `api_consumers`
+- `api_gateway_logs`
+- `audit_logs`
+- `bot_sessions`
+- `branches`
+- `maintenance_categories`
+- `maintenance_requests`
+- `maintenance_request_notes`
+- `maintenance_technicians`
+- `outbound_messages`
 
 ## 5. Verify
 
-```powershell
-docker compose --env-file .env.production -f docker-compose.prod.yaml ps
-Invoke-WebRequest https://bot.alazab.com/health -UseBasicParsing
+Server health:
+
+```bash
+curl -fsS http://127.0.0.1:5005/
+curl -fsS http://127.0.0.1:8000/health
+curl -fsS http://127.0.0.1:8000/
 ```
 
-## 6. Test Sites
+UberFix bot-gateway services:
 
-Use the manual checklist:
-
-- `docs/site-test-plan.md`
-
-Use the local API smoke test before DNS cutover:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\smoke-test-sites.ps1 -BaseUrl http://127.0.0.1:8000
+```bash
+curl -fsS -X POST http://127.0.0.1:8000/uberfix/bot-gateway \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: $UBERFIX_API_KEY" \
+  -d '{"action":"list_services","payload":{}}'
 ```
 
-## 7. Register Telegram Webhook
+Create a maintenance request:
 
-After DNS and SSL are valid:
-
-```powershell
-bash scripts/register-telegram.sh
+```bash
+curl -fsS -X POST http://127.0.0.1:8000/uberfix/bot-gateway \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: $UBERFIX_API_KEY" \
+  -d '{
+    "action": "create_request",
+    "payload": {
+      "client_name": "Production Test",
+      "client_phone": "01000000000",
+      "location": "test",
+      "service_type": "electrical",
+      "description": "production smoke test",
+      "priority": "medium"
+    },
+    "session_id": "prod_smoke_test",
+    "metadata": {"source": "azabot", "locale": "ar"}
+  }'
 ```
 
-The expected webhook path is:
+Check status:
 
-```text
-https://bot.alazab.com/webhook/telegram
+```bash
+curl -fsS -X POST http://127.0.0.1:8000/uberfix/bot-gateway \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: $UBERFIX_API_KEY" \
+  -d '{"action":"check_status","payload":{"search_term":"MR-26-01046","search_type":"request_number"}}'
 ```
 
-## 8. Logs
+## 6. Logs
 
-```powershell
-docker compose --env-file .env.production -f docker-compose.prod.yaml logs -f webhook
-docker compose --env-file .env.production -f docker-compose.prod.yaml logs -f rasa
-docker compose --env-file .env.production -f docker-compose.prod.yaml logs -f rasa-actions
-docker compose --env-file .env.production -f docker-compose.prod.yaml logs -f nginx
+```bash
+sudo systemctl status alazab-rasa-actions --no-pager
+sudo systemctl status alazab-rasa-rasa --no-pager
+sudo systemctl status alazab-rasa-webhook --no-pager
+sudo journalctl -u alazab-rasa-webhook -f
+sudo journalctl -u alazab-rasa-rasa -f
+sudo journalctl -u alazab-rasa-actions -f
 ```
+
+Gateway logs in PostgreSQL:
+
+```sql
+SELECT action, status_code, success, duration_ms, created_at
+FROM api_gateway_logs
+ORDER BY created_at DESC
+LIMIT 50;
+```
+
+## 7. Security Checks
+
+Run these from the project root before pushing a release:
+
+```bash
+python -m py_compile webhook/server.py actions/brand_actions/uberfix.py
+pnpm --dir azabot-prod lint
+pnpm --dir azabot-prod test
+pnpm --dir azabot-prod build
+snyk test --all-projects --detection-depth=3 --skip-unresolved
+```
+
+Use `--detection-depth=3` so Snyk scans the real project manifests and does not scan generated virtualenv internals.

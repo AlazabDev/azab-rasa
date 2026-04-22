@@ -5,7 +5,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { Mic, Square, Trash2, Volume2, Loader2 } from "lucide-react";
-import { speechToText, speakInBrowser } from "@/lib/chat-service";
+import { speechToText, speakInBrowser, stopSpeechPlayback } from "@/lib/chat-service";
 import { toast } from "sonner";
 import type { Message } from "@/types/chat";
 
@@ -126,7 +126,7 @@ export function VoiceView({ messages, streaming, onSendText }: VoiceViewProps) {
   const stopTTS = useCallback(() => {
     audioRef.current?.pause();
     audioRef.current = null;
-    window.speechSynthesis?.cancel();
+    stopSpeechPlayback();
     setPlayingTTS(false);
   }, []);
 

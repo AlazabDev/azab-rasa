@@ -19,6 +19,7 @@ results/
 graph.html
 .runtime/
 logs/
+webhook/static/uploads/
 
 # Docker
 .docker/

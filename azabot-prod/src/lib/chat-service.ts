@@ -6,6 +6,8 @@
 import { CONFIG } from "./config";
 import type { ApiMessage } from "@/types/chat";
 
+let currentAudio: HTMLAudioElement | null = null;
+
 interface StreamChatOptions {
   messages: ApiMessage[];
   siteId?: string;
@@ -148,14 +150,23 @@ export async function uploadChatFile({
   onDone();
 }
 
-export function speakInBrowser(text: string, lang = "ar-SA"): Promise<void> {
+export async function speakInBrowser(text: string, lang = "ar-SA"): Promise<void> {
+  const cleanText = stripMarkdown(text);
+  try {
+    await playServerTTS(cleanText);
+    return;
+  } catch {
+    // Fallback to browser voices when server-side TTS is unavailable.
+  }
+
   return new Promise((resolve, reject) => {
     if (!("speechSynthesis" in window)) {
       reject(new Error("Speech synthesis is not supported"));
       return;
     }
+    stopSpeechPlayback();
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(stripMarkdown(text));
+    const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.lang = lang;
     utterance.rate = 0.95;
     utterance.onend = () => resolve();
@@ -164,7 +175,51 @@ export function speakInBrowser(text: string, lang = "ar-SA"): Promise<void> {
   });
 }
 
+export function stopSpeechPlayback(): void {
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio.src = "";
+    currentAudio = null;
+  }
+  window.speechSynthesis?.cancel();
+}
+
 // ─── Helpers ────────────────────────────────────────────────
+
+async function playServerTTS(text: string): Promise<void> {
+  if (!text) return;
+  const response = await fetch(CONFIG.api.tts, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
+  if (!response.ok) {
+    throw new Error(`TTS failed: ${response.status}`);
+  }
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  stopSpeechPlayback();
+  const audio = new Audio(url);
+  currentAudio = audio;
+
+  await new Promise<void>((resolve, reject) => {
+    audio.onended = () => {
+      URL.revokeObjectURL(url);
+      currentAudio = null;
+      resolve();
+    };
+    audio.onerror = () => {
+      URL.revokeObjectURL(url);
+      currentAudio = null;
+      reject(new Error("Server TTS playback failed"));
+    };
+    audio.play().catch((error) => {
+      URL.revokeObjectURL(url);
+      currentAudio = null;
+      reject(error);
+    });
+  });
+}
 
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;

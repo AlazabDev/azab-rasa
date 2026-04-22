@@ -3,28 +3,28 @@
  * إدارة Text-to-Speech بشكل موحد
  */
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { VOICES } from "@/types/chat";
 import type { VoiceOption } from "@/types/chat";
+import { speakInBrowser, stopSpeechPlayback } from "@/lib/chat-service";
 
 export function useTTS() {
   const [enabled, setEnabled] = useState(true);
   const [speaking, setSpeaking] = useState(false);
   const [selectedVoice, setSelectedVoice] = useState<VoiceOption>(VOICES[0]);
-  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   // إيقاف الكلام عند الخروج
   useEffect(() => {
     return () => {
-      window.speechSynthesis?.cancel();
+      stopSpeechPlayback();
     };
   }, []);
 
   const speak = useCallback(
-    (text: string) => {
-      if (!enabled || !("speechSynthesis" in window)) return;
+    async (text: string) => {
+      if (!enabled) return;
 
-      window.speechSynthesis.cancel();
+      stopSpeechPlayback();
       setSpeaking(false);
 
       // تنظيف Markdown قبل القراءة
@@ -37,30 +37,18 @@ export function useTTS() {
         .replace(/^\s*[-*+]\s/gm, "")
         .trim();
 
-      const utterance = new SpeechSynthesisUtterance(cleanText);
-      utterance.lang = selectedVoice.lang;
-      utterance.rate = 0.95;
-      utterance.pitch = 1;
-
-      // اختيار أفضل صوت متاح
-      const voices = window.speechSynthesis.getVoices();
-      const match =
-        voices.find((v) => v.lang === selectedVoice.lang) ||
-        voices.find((v) => v.lang.startsWith(selectedVoice.lang.split("-")[0]));
-      if (match) utterance.voice = match;
-
-      utterance.onstart = () => setSpeaking(true);
-      utterance.onend = () => setSpeaking(false);
-      utterance.onerror = () => setSpeaking(false);
-
-      utteranceRef.current = utterance;
-      window.speechSynthesis.speak(utterance);
+      try {
+        setSpeaking(true);
+        await speakInBrowser(cleanText, selectedVoice.lang);
+      } finally {
+        setSpeaking(false);
+      }
     },
     [enabled, selectedVoice]
   );
 
   const stop = useCallback(() => {
-    window.speechSynthesis?.cancel();
+    stopSpeechPlayback();
     setSpeaking(false);
   }, []);
 

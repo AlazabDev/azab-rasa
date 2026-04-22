@@ -104,10 +104,11 @@ Invoke-RestMethod `
 /chat
 /chat/upload
 /chat/audio
+/chat/tts
+/uberfix/bot-gateway
 /webhook/meta
 /webhook/telegram
 /health
-/widget
 ```
 
 PostgreSQL وRedis في هذا التصميم خدمات خارجية فعلية وليست حاويات محلية.
