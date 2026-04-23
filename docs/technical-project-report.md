@@ -6,7 +6,7 @@
 
 ## المكونات الرئيسية
 
-- Frontend: `azabot-prod`.
+- Frontend: `azabot`.
 - Backend/API: `webhook/server.py`.
 - Rasa domain/data/actions: `domain`, `data`, `actions`.
 - Database schema: `database/uberfix_bot_gateway_schema.sql`.
@@ -32,7 +32,7 @@ Redis يستخدم كخدمة خارجية لتشغيل Rasa/Tracker حسب إع
 
 FastAPI مسؤول عن:
 
-- خدمة واجهة React المبنية من `azabot-prod/dist`.
+- خدمة واجهة React المبنية من `azabot/dist`.
 - استقبال رسائل الدردشة.
 - رفع الملفات.
 - استقبال الصوت وتحويله لنص.

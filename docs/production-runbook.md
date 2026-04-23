@@ -157,9 +157,9 @@ Run these from the project root before pushing a release:
 
 ```bash
 python -m py_compile webhook/server.py actions/brand_actions/uberfix.py
-pnpm --dir azabot-prod lint
-pnpm --dir azabot-prod test
-pnpm --dir azabot-prod build
+pnpm --dir azabot lint
+pnpm --dir azabot test
+pnpm --dir azabot build
 snyk test --all-projects --detection-depth=3 --skip-unresolved
 ```
 

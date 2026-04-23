@@ -45,6 +45,7 @@ import os
 import re
 import time
 import uuid
+import base64
 from collections import defaultdict
 from datetime import date, datetime, timezone
 from decimal import Decimal
@@ -111,7 +112,7 @@ ALLOWED_FILE_EXTENSIONS = {
 AUDIO_FILE_EXTENSIONS = {".mp3", ".wav", ".ogg", ".m4a", ".webm", ".aac", ".mp4"}
 AUDIO_TRANSCRIPTION_MODEL = os.getenv("AUDIO_TRANSCRIPTION_MODEL", "gpt-4o-mini-transcribe")
 AUDIO_TTS_MODEL = os.getenv("AUDIO_TTS_MODEL", "gpt-4o-mini-tts")
-AUDIO_TTS_VOICE = os.getenv("AUDIO_TTS_VOICE", "alloy")
+AUDIO_TTS_VOICE = os.getenv("AUDIO_TTS_VOICE", "nova")
 
 BRAND_PATH_MAP = {
     "/": "alazab_construction",
@@ -219,6 +220,12 @@ TG_API_BASE    = f"https://api.telegram.org/bot{TG_TOKEN}"
 
 # Admin
 ADMIN_API_KEY  = os.getenv("ADMIN_API_KEY",        "")
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@alazab.com").strip().lower()
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "Azab@202555bot")
+ADMIN_SESSION_TTL_SECONDS = int(os.getenv("ADMIN_SESSION_TTL_SECONDS", str(7 * 24 * 60 * 60)))
+ADMIN_SESSION_SECRET = os.getenv("ADMIN_SESSION_SECRET", "").strip() or hashlib.sha256(
+    f"{ADMIN_EMAIL}:{ADMIN_PASSWORD}:{ADMIN_API_KEY}".encode("utf-8")
+).hexdigest()
 
 # UberFix local bot-gateway
 UBERFIX_API_KEY = os.getenv("UBERFIX_API_KEY", "")
@@ -279,6 +286,7 @@ DEFAULT_ADMIN_DATA: dict[str, Any] = {
     "integrations": [],
     "logs": [],
     "conversations": [],
+    "uploads": [],
 }
 
 
@@ -314,6 +322,7 @@ async def _record_conversation(
     *,
     channel: str,
     brand: Optional[str],
+    attachment: Optional[dict[str, Any]] = None,
 ) -> None:
     data = _load_admin_data()
     conversations = data.setdefault("conversations", [])
@@ -341,7 +350,28 @@ async def _record_conversation(
         "content": user_text,
         "created_at": now,
     }
+    if attachment:
+        user_message["attachments"] = [attachment]
     conv.setdefault("messages", []).append(user_message)
+
+    if attachment:
+        uploads = data.setdefault("uploads", [])
+        uploads.insert(
+            0,
+            {
+                "id": str(uuid.uuid4()),
+                "conversation_id": conv["id"],
+                "session_id": sender_id,
+                "message_id": user_message["id"],
+                "brand": brand,
+                "channel": channel,
+                "created_at": now,
+                "note": user_text,
+                **attachment,
+            },
+        )
+        data["uploads"] = uploads[:1000]
+
     assistant_messages: list[dict[str, Any]] = []
     for response in responses:
         text = response.get("text") if isinstance(response, dict) else None
@@ -380,11 +410,13 @@ async def _record_conversation(
 def _admin_stats_payload() -> dict[str, Any]:
     data = _load_admin_data()
     conversations = data.get("conversations", [])
+    uploads = data.get("uploads", [])
     messages = sum(len(item.get("messages", [])) for item in conversations)
     today_prefix = datetime.now(timezone.utc).date().isoformat()
     return {
         "conversations": len(conversations),
         "messages": messages,
+        "uploads": len(uploads),
         "today": sum(
             1 for item in conversations
             if str(item.get("created_at", "")).startswith(today_prefix)
@@ -397,14 +429,70 @@ def _admin_stats_payload() -> dict[str, Any]:
 
 
 def _require_admin(request: Request) -> None:
-    if not ADMIN_API_KEY:
-        raise HTTPException(status_code=503, detail="ADMIN_API_KEY is not configured")
+    token = _extract_admin_token(request)
+    if token and _verify_admin_session_token(token):
+        return
 
-    token = request.headers.get("X-Admin-Token") or ""
-    if hmac.compare_digest(token, ADMIN_API_KEY):
+    legacy_token = request.headers.get("X-Admin-Token") or ""
+    if ADMIN_API_KEY and hmac.compare_digest(legacy_token, ADMIN_API_KEY):
         return
 
     raise HTTPException(status_code=401, detail="Admin token required")
+
+
+def _extract_admin_token(request: Request) -> str:
+    auth = request.headers.get("Authorization") or ""
+    if auth.lower().startswith("bearer "):
+        return auth[7:].strip()
+    return request.headers.get("X-Admin-Token") or ""
+
+
+def _b64url_encode(value: bytes) -> str:
+    return base64.urlsafe_b64encode(value).decode("ascii").rstrip("=")
+
+
+def _b64url_decode(value: str) -> bytes:
+    padding = "=" * (-len(value) % 4)
+    return base64.urlsafe_b64decode((value + padding).encode("ascii"))
+
+
+def _issue_admin_session_token(email: str) -> str:
+    now = int(time.time())
+    payload = {
+        "sub": email,
+        "role": "admin",
+        "iat": now,
+        "exp": now + ADMIN_SESSION_TTL_SECONDS,
+    }
+    payload_raw = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
+    payload_b64 = _b64url_encode(payload_raw)
+    signature = hmac.new(
+        ADMIN_SESSION_SECRET.encode("utf-8"),
+        payload_b64.encode("ascii"),
+        hashlib.sha256,
+    ).digest()
+    return f"{payload_b64}.{_b64url_encode(signature)}"
+
+
+def _verify_admin_session_token(token: str) -> bool:
+    try:
+        payload_b64, signature_b64 = token.split(".", 1)
+        expected_signature = hmac.new(
+            ADMIN_SESSION_SECRET.encode("utf-8"),
+            payload_b64.encode("ascii"),
+            hashlib.sha256,
+        ).digest()
+        actual_signature = _b64url_decode(signature_b64)
+        if not hmac.compare_digest(actual_signature, expected_signature):
+            return False
+        payload = json.loads(_b64url_decode(payload_b64).decode("utf-8"))
+        return (
+            payload.get("role") == "admin"
+            and payload.get("sub") == ADMIN_EMAIL
+            and int(payload.get("exp", 0)) >= int(time.time())
+        )
+    except Exception:
+        return False
 
 
 # ══════════════════════════════════════════════════════════════
@@ -424,6 +512,27 @@ class ChatRequest(BaseModel):
         if not v.strip():
             raise ValueError("الرسالة لا يمكن أن تكون فارغة")
         return v.strip()
+
+
+class AdminLoginRequest(BaseModel):
+    email: str
+    password: str
+
+    @field_validator("email")
+    @classmethod
+    def email_not_empty(cls, value: str) -> str:
+        email = value.strip().lower()
+        if not email:
+            raise ValueError("البريد الإلكتروني مطلوب")
+        return email
+
+    @field_validator("password")
+    @classmethod
+    def password_not_empty(cls, value: str) -> str:
+        password = value.strip()
+        if not password:
+            raise ValueError("كلمة المرور مطلوبة")
+        return password
 
 
 class LeadData(BaseModel):
@@ -1494,6 +1603,21 @@ async def admin_stats(_: None = Depends(_require_admin)):
     return _admin_stats_payload()
 
 
+@app.post("/admin/login", tags=["System"])
+async def admin_login(payload: AdminLoginRequest):
+    """تسجيل دخول لوحة الإدارة محلياً بدون Supabase."""
+    email_ok = hmac.compare_digest(payload.email, ADMIN_EMAIL)
+    password_ok = hmac.compare_digest(payload.password, ADMIN_PASSWORD)
+    if not (email_ok and password_ok):
+        raise HTTPException(status_code=401, detail="بيانات الدخول غير صحيحة")
+
+    return {
+        "token": _issue_admin_session_token(ADMIN_EMAIL),
+        "email": ADMIN_EMAIL,
+        "expires_in": ADMIN_SESSION_TTL_SECONDS,
+    }
+
+
 @app.api_route("/admin/api", methods=["GET", "POST"], tags=["System"])
 async def admin_api(request: Request, action: str, _: None = Depends(_require_admin)):
     data = _load_admin_data()
@@ -1538,6 +1662,23 @@ async def admin_api(request: Request, action: str, _: None = Depends(_require_ad
             }
             for item in conversations
         ]
+
+    if action == "list_uploads":
+        q = (request.query_params.get("q") or "").strip().lower()
+        kind = (request.query_params.get("kind") or "").strip().lower()
+        uploads = data.get("uploads", [])
+        if kind:
+            uploads = [item for item in uploads if str(item.get("kind", "")).lower() == kind]
+        if q:
+            uploads = [
+                item for item in uploads
+                if q in str(item.get("name", "")).lower()
+                or q in str(item.get("session_id", "")).lower()
+                or q in str(item.get("brand", "")).lower()
+                or q in str(item.get("channel", "")).lower()
+                or q in str(item.get("note", "")).lower()
+            ]
+        return uploads[:500]
 
     if action == "get_conversation":
         conv_id = request.query_params.get("id")
@@ -1740,6 +1881,7 @@ async def chat_upload(
         responses,
         channel=channel,
         brand=resolved_brand,
+        attachment=public_attachment,
     )
     return ChatResponse(
         responses=responses,
@@ -1807,6 +1949,7 @@ async def chat_audio(
         responses,
         channel=channel,
         brand=resolved_brand,
+        attachment=public_attachment,
     )
     return ChatResponse(
         responses=responses,
