@@ -31,7 +31,7 @@ Options:
   --webhook-workers N    Uvicorn workers. Default: 2
   --skip-pull            Do not run git fetch/pull
   --skip-train           Do not run rasa train
-  --skip-frontend        Do not run pnpm install/build in azabot-prod
+  --skip-frontend        Do not run pnpm install/build in azabot
   --skip-db              Do not install/update UberFix PostgreSQL schema
   --skip-systemd         Prepare/build only, do not write/restart services
   --configure-nginx      Write an nginx reverse proxy config for the domain
@@ -190,17 +190,17 @@ install_database_schema() {
 
 install_frontend() {
   $SKIP_FRONTEND && { warn "Skipping frontend build"; return; }
-  [[ -d "$APP_DIR/azabot-prod" ]] || fail "Missing azabot-prod frontend directory"
+  [[ -d "$APP_DIR/azabot" ]] || fail "Missing azabot frontend directory"
   require_cmd node
   if command -v corepack >/dev/null 2>&1; then
     run_cmd corepack enable
     run_cmd corepack prepare pnpm@10.33.0 --activate
   fi
   require_cmd pnpm
-  run_cmd pnpm --dir "$APP_DIR/azabot-prod" install --frozen-lockfile
-  run_cmd pnpm --dir "$APP_DIR/azabot-prod" lint
-  run_cmd pnpm --dir "$APP_DIR/azabot-prod" test
-  run_cmd pnpm --dir "$APP_DIR/azabot-prod" build
+  run_cmd pnpm --dir "$APP_DIR/azabot" install --frozen-lockfile
+  run_cmd pnpm --dir "$APP_DIR/azabot" lint
+  run_cmd pnpm --dir "$APP_DIR/azabot" test
+  run_cmd pnpm --dir "$APP_DIR/azabot" build
 }
 
 train_rasa() {

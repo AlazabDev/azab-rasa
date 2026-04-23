@@ -22,3 +22,25 @@ dev = [
   "pytest>=8.0.0",
   "ruff>=0.4.0",
 ]
+
+[tool.setuptools.packages.find]
+include = [
+  "actions",
+  "actions.*",
+  "webhook",
+  "webhook.*",
+]
+exclude = [
+  "data",
+  "data.*",
+  "domain",
+  "domain.*",
+  "docs",
+  "docs.*",
+  "logs",
+  "logs.*",
+  "prompts",
+  "prompts.*",
+  "tests",
+  "tests.*",
+]

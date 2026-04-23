@@ -95,9 +95,9 @@ BASE_DIR = Path(__file__).resolve().parent
 ROOT_DIR = BASE_DIR.parent
 STATIC_DIR = BASE_DIR / "static"
 UPLOADS_DIR = STATIC_DIR / "uploads"
-FRONTEND_DIST_DIR = ROOT_DIR / "azabot-prod" / "dist"
+FRONTEND_DIST_DIR = ROOT_DIR / "azabot" / "dist"
 FRONTEND_ASSETS_DIR = FRONTEND_DIST_DIR / "assets"
-FRONTEND_EMBED_DIR = ROOT_DIR / "azabot-prod" / "embed"
+FRONTEND_EMBED_DIR = ROOT_DIR / "azabot" / "embed"
 ADMIN_DATA_FILE = ROOT_DIR / ".runtime" / "admin-data.json"
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 ADMIN_DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -119,6 +119,19 @@ BRAND_PATH_MAP = {
     "/brand-identity": "brand_identity",
     "/uberfix": "uberfix",
     "/laban-alasfour": "laban_alasfour",
+}
+
+BRAND_ALIAS_MAP = {
+    "alazab": "alazab_construction",
+    "alazab-construction": "alazab_construction",
+    "alazab_construction": "alazab_construction",
+    "luxury-finishing": "luxury_finishing",
+    "luxury_finishing": "luxury_finishing",
+    "brand-identity": "brand_identity",
+    "brand_identity": "brand_identity",
+    "uberfix": "uberfix",
+    "laban-alasfour": "laban_alasfour",
+    "laban_alasfour": "laban_alasfour",
 }
 
 BRAND_PROFILES = {
@@ -155,8 +168,14 @@ BRAND_PROFILES = {
 }
 
 SITE_BRAND_MAP = {
+    "alazab.com": "alazab_construction",
+    "www.alazab.com": "alazab_construction",
     "bot.alazab.com": "alazab_construction",
     "www.bot.alazab.com": "alazab_construction",
+    "luxury-finishing.alazab.com": "luxury_finishing",
+    "brand-identity.alazab.com": "brand_identity",
+    "uberfix.alazab.com": "uberfix",
+    "laban-alasfour.alazab.com": "laban_alasfour",
 }
 
 ALLOWED_ORIGINS = os.getenv(
@@ -2364,8 +2383,9 @@ def _resolve_brand(
     site_path: Optional[str],
     request: Request,
 ) -> str:
-    if explicit_brand in BRAND_PROFILES:
-        return explicit_brand
+    normalized_brand = BRAND_ALIAS_MAP.get((explicit_brand or "").strip())
+    if normalized_brand in BRAND_PROFILES:
+        return normalized_brand
 
     for candidate_path in (
         site_path,
@@ -2401,7 +2421,7 @@ def _frontend_response(path: str = "") -> FileResponse:
     if not index_file.is_file():
         raise HTTPException(
             status_code=503,
-            detail="Frontend build is missing. Run `pnpm install` and `pnpm build` inside azabot-prod.",
+            detail="Frontend build is missing. Run `pnpm install` and `pnpm build` inside azabot.",
         )
     return FileResponse(index_file)
 

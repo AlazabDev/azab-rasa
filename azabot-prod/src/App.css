@@ -1,5 +1,0 @@
-/* App-level overrides — معظم الستايل في index.css */
-
-#root {
-  isolation: isolate; /* z-index context مستقل */
-}
